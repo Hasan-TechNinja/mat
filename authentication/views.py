@@ -1,3 +1,4 @@
+from urllib import request
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.models import User
 from . models import Profile, RegistrationVerifyCode, PasswordResetCode
@@ -19,6 +20,10 @@ class RegisterView(APIView):
 
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
+
+        gender = request.data.get('gender')
+        date_of_birth = request.data.get('date_of_birth')
+
         if serializer.is_valid():
             email = serializer.validated_data.get('email')
             
@@ -33,7 +38,16 @@ class RegisterView(APIView):
 
             code = random.randint(1000, 9999)
             RegistrationVerifyCode.objects.create(user=user, code=code)
-            
+
+            # Create Profile
+            Profile.objects.get_or_create(
+                user=user,
+                defaults={
+                    'gender': gender if gender else 'Other',
+                    'date_of_birth': date_of_birth
+                }
+            )
+
             try:
                 send_mail(
                     'Verification Code',
@@ -43,6 +57,7 @@ class RegisterView(APIView):
                     fail_silently=False,
                 )
             except Exception as e:
+
                 # Fallback for development if email fails
                 print(f"Failed to send email: {e}")
                 return Response({'message': 'User registered, but failed to send email. Code: ' + str(code)}, status=status.HTTP_201_CREATED)
@@ -58,8 +73,7 @@ class RegisterVerificationView(APIView):
     def post(self, request):
         email = request.data.get('email')
         code = request.data.get('code')
-        gender = request.data.get('gender')
-        date_of_birth = request.data.get('date_of_birth')
+
 
         if not email or not code:
             return Response({"error": "Email and code are required."}, status=status.HTTP_400_BAD_REQUEST)
@@ -78,14 +92,7 @@ class RegisterVerificationView(APIView):
             user.save()
             checked.delete()
             
-            # Create Profile
-            Profile.objects.get_or_create(
-                user=user,
-                defaults={
-                    'gender': gender if gender else 'Other',
-                    'date_of_birth': date_of_birth
-                }
-            )
+
             
             return Response({"message": "User successfully activated, now login the account."}, status=status.HTTP_200_OK)
         else:
@@ -218,3 +225,26 @@ class ChangePasswordView(APIView):
         user.save()
         reset_code.delete()
         return Response({'message': "Password has been reset successfully!"}, status=status.HTTP_200_OK)
+    
+
+
+class ProfileView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        profile = get_object_or_404(Profile, user=request.user)
+        serializer = ProfileSerializer(profile)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def put(self, request):
+        profile = get_object_or_404(Profile, user=request.user)
+        user = profile.user
+        user.first_name = request.data.get('first_name', user.first_name)
+        user.last_name = request.data.get('last_name', user.last_name)
+        user.email = request.data.get('email', user.email)
+        user.save()
+        serializer = ProfileSerializer(profile, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
