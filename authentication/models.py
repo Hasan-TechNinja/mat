@@ -1,10 +1,11 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 # Create your models here.
 
 class Profile(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     image = models.ImageField(upload_to='profile_images/')
     # followers = models.ManyToManyField('self', symmetrical=False, related_name='following')
     following = models.ManyToManyField('self', symmetrical=False, related_name='followers')
@@ -26,5 +27,18 @@ class RegistrationVerifyCode(models.Model):
         return f"Verification code for {self.user.username}"
     
     def is_expired(self):
-        from django.utils import timezone
+
+        return timezone.now() > self.created_at + timezone.timedelta(minutes=10)
+    
+
+class PasswordResetCode(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Password reset code for {self.user.username}"
+    
+    def is_expired(self):
+        
         return timezone.now() > self.created_at + timezone.timedelta(minutes=10)
