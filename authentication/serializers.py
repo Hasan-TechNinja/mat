@@ -14,7 +14,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
     class Meta:
         model = Profile
-        fields = ['user', 'image', 'first_name', 'last_name', 'email', 'following', 'date_of_birth', 'gender', 'created_at']
+        fields = ['user', 'image', 'first_name', 'last_name', 'phone', 'email', 'following', 'date_of_birth', 'gender', 'created_at']
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})

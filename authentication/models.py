@@ -7,6 +7,7 @@ from django.utils import timezone
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     image = models.ImageField(upload_to='profile_images/', blank=True, null=True)
+    phone = models.CharField(max_length=15, blank=True, null=True)
     # followers = models.ManyToManyField('self', symmetrical=False, related_name='following')
     following = models.ManyToManyField('self', symmetrical=False, related_name='followers')
     created_at = models.DateTimeField(auto_now_add=True)
