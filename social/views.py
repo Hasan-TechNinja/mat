@@ -1,4 +1,7 @@
 from django.shortcuts import render
+from django.db.models import Q, Count
+from django.utils import timezone
+from datetime import timedelta
 from .models import Post, PostImage, Comment, Wishlist
 from .serializers import PostSerializer, CommentSerializer, WishlistSerializer
 from rest_framework.views import APIView
@@ -113,3 +116,93 @@ class FilteredPostView(APIView):
 
         serializer = PostSerializer(posts.order_by('-created_at'), many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class PostSearchView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        query = request.query_params.get('query', '').strip()
+
+        if not query:
+            return Response([], status=status.HTTP_200_OK)
+
+        posts = Post.objects.filter(
+            Q(approval=True) & (
+                Q(content__icontains=query) |
+                Q(category__name__icontains=query) |
+                Q(occasion__name__icontains=query) |
+                Q(target_category__icontains=query)
+            )
+        ).order_by('-created_at')
+
+        serializer = PostSerializer(posts, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class TrendingPostView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        one_month_ago = timezone.now() - timedelta(days=30)
+
+        posts = Post.objects.filter(
+            approval=True,
+            created_at__gte=one_month_ago
+        ).annotate(
+            likes_count=Count('likes'),
+            comments_count=Count('comment'),
+            engagement=Count('likes') + Count('comment')
+        ).order_by('-engagement', '-created_at')
+
+        serializer = PostSerializer(posts, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class RecommendedPostView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        # Collect post IDs the user has engaged with
+        liked_posts = Post.objects.filter(likes=user)
+        commented_posts = Post.objects.filter(comment__user=user)
+        wishlisted_posts = Post.objects.filter(wishlisted_by__user=user)
+
+        engaged_posts = liked_posts | commented_posts | wishlisted_posts
+        engaged_post_ids = engaged_posts.values_list('id', flat=True).distinct()
+
+        # Extract user interests from engaged posts
+        categories = engaged_posts.values_list('category', flat=True).distinct()
+        occasions = engaged_posts.values_list('occasion', flat=True).distinct()
+        targets = engaged_posts.values_list('target_category', flat=True).distinct()
+
+        # Filter out None values
+        categories = [c for c in categories if c is not None]
+        occasions = [o for o in occasions if o is not None]
+        targets = [t for t in targets if t]
+
+        # If user has no engagement history, return empty
+        if not categories and not occasions and not targets:
+            return Response([], status=status.HTTP_200_OK)
+
+        # Build Q filter for matching interests
+        interest_filter = Q()
+        if categories:
+            interest_filter |= Q(category_id__in=categories)
+        if occasions:
+            interest_filter |= Q(occasion_id__in=occasions)
+        if targets:
+            interest_filter |= Q(target_category__in=targets)
+
+        # Get recommended posts: approved, matching interests, not already engaged
+        posts = Post.objects.filter(
+            Q(approval=True) & interest_filter
+        ).exclude(
+            id__in=engaged_post_ids
+        ).order_by('-created_at')
+
+        serializer = PostSerializer(posts, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+

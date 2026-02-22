@@ -8,4 +8,7 @@ urlpatterns = [
     path('post/<int:post_id>/wishlist/', views.WishListView.as_view(), name='wishlist'),
     path('post/wishlist/', views.WishListView.as_view(), name='wishlist'),
     path('posts/filter/', views.FilteredPostView.as_view(), name='filtered-posts'),
+    path('posts/search/', views.PostSearchView.as_view(), name='post-search'),
+    path('posts/trending/', views.TrendingPostView.as_view(), name='trending-posts'),
+    path('posts/recommended/', views.RecommendedPostView.as_view(), name='recommended-posts'),
 ]

@@ -24,7 +24,7 @@ class PostSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'user', 'content', 'category', 'occasion', 'amazon_link',
             'target_category', 'likes', 'comments', 'likes_count',
-            'comments_count', 'created_at', 'profile', 'images'
+            'comments_count', 'views', 'created_at', 'profile', 'images'
         ]
 
     def get_comments(self, obj):
