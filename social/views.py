@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
 from rest_framework.parsers import MultiPartParser, FormParser
+from notification.fcm_utils import send_push_notification
 
 # Create your views here.
 
@@ -48,6 +49,21 @@ class CommentListCreateView(APIView):
         serializer = CommentSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save(user=request.user, post_id=post_id)
+
+            # Send notification to post owner
+            try:
+                post = Post.objects.get(id=post_id)
+                if post.user != request.user:
+                    send_push_notification(
+                        user=post.user,
+                        title="New Comment",
+                        body=f"{request.user.username} commented on your post.",
+                        data={"type": "comment", "post_id": str(post_id)}
+                    )
+                    print("Notification sent successfully")
+            except Post.DoesNotExist:
+                pass
+
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
@@ -63,6 +79,16 @@ class PostLikeView(APIView):
             return Response({'message': 'Post disliked successfully'}, status=status.HTTP_200_OK)
         else:
             post.likes.add(request.user)
+
+            # Send notification to post owner
+            if post.user != request.user:
+                send_push_notification(
+                    user=post.user,
+                    title="New Like",
+                    body=f"{request.user.username} liked your post.",
+                    data={"type": "like", "post_id": str(post_id)}
+                )
+
             return Response({'message': 'Post liked successfully'}, status=status.HTTP_200_OK)
     
     def get(self, request, post_id):
@@ -91,6 +117,16 @@ class WishListView(APIView):
             return Response({"message": "Removed from wishlist"}, status=status.HTTP_200_OK)
         else:
             Wishlist.objects.create(post=post, user=request.user)
+
+            # Send notification to post owner
+            if post.user != request.user:
+                send_push_notification(
+                    user=post.user,
+                    title="New Wishlist",
+                    body=f"{request.user.username} wishlisted your post.",
+                    data={"type": "wishlist", "post_id": str(post_id)}
+                )
+
             return Response({"message": "Added to wishlist"}, status=status.HTTP_201_CREATED)
 
 
@@ -205,4 +241,3 @@ class RecommendedPostView(APIView):
 
         serializer = PostSerializer(posts, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
-

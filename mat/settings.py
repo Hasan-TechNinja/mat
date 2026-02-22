@@ -43,6 +43,8 @@ INSTALLED_APPS = [
     'social',
     'rest_framework',
     'corsheaders',
+    'notification',
+    'fcm_django',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
 
@@ -66,7 +68,7 @@ ROOT_URLCONF = 'mat.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR/'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -141,6 +143,16 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Firebase Push Notifications
+import os
+FIREBASE_SERVICE_ACCOUNT_PATH = os.path.join(BASE_DIR, 'demo-firebase-adminsdk-fbsvc-ec635f41a2.json')
+
+FCM_DJANGO_SETTINGS = {
+    "FCM_SERVER_KEY": None,  # Using Firebase Admin SDK instead
+    "ONE_DEVICE_PER_USER": False,
+    "DELETE_INACTIVE_DEVICES": True,
+}
 
 
 REST_FRAMEWORK = {
