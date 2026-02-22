@@ -1,14 +1,16 @@
 from django.shortcuts import render
-from .models import Post, Comment, Wishlist
+from .models import Post, PostImage, Comment, Wishlist
 from .serializers import PostSerializer, CommentSerializer, WishlistSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
+from rest_framework.parsers import MultiPartParser, FormParser
 
 # Create your views here.
 
 class PostListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
 
     def get(self, request):
         posts = Post.objects.filter(approval=True).order_by('-created_at')
@@ -18,8 +20,16 @@ class PostListCreateView(APIView):
     def post(self, request):
         serializer = PostSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save(user=request.user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            post = serializer.save(user=request.user)
+
+            # Handle multiple image uploads
+            images = request.FILES.getlist('images')
+            for image in images:
+                PostImage.objects.create(post=post, image=image)
+
+            # Re-serialize to include the newly created images
+            response_serializer = PostSerializer(post)
+            return Response(response_serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 
