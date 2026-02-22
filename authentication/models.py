@@ -11,7 +11,7 @@ class Profile(models.Model):
     following = models.ManyToManyField('self', symmetrical=False, related_name='followers')
     created_at = models.DateTimeField(auto_now_add=True)
     date_of_birth = models.DateField(null=True, blank=True)
-    gender = models.CharField(max_length=10, choices=[('Male', 'Male'), ('Female', 'Female'), ('Other', 'Other')])
+    gender = models.CharField(max_length=10, choices=[('Male', 'Male'), ('Female', 'Female'), ('Kids', 'Kids')])
     is_subscribed = models.BooleanField(default=False)
 
     def __str__(self):

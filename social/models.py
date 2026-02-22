@@ -29,6 +29,7 @@ class Post(models.Model):
     comments = models.ManyToManyField(User, through='Comment', related_name='commented_posts', blank=True)
     views = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
+    approval = models.BooleanField(default=False)
 
     def __str__(self):
         return self.content[:50]
