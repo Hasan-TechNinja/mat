@@ -12,9 +12,18 @@ class ProfileSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(source='user.first_name', read_only=True)
     last_name = serializers.CharField(source='user.last_name', read_only=True)
     email = serializers.EmailField(source='user.email', read_only=True)
+    followers_count = serializers.SerializerMethodField()
+    following_count = serializers.SerializerMethodField()
+
     class Meta:
         model = Profile
-        fields = ['user', 'image', 'first_name', 'last_name', 'phone', 'email', 'following', 'date_of_birth', 'gender', 'created_at']
+        fields = ['user', 'image', 'first_name', 'last_name', 'phone', 'email', 'following', 'followers_count', 'following_count', 'date_of_birth', 'gender', 'created_at']
+
+    def get_followers_count(self, obj):
+        return obj.followers.count()
+
+    def get_following_count(self, obj):
+        return obj.following.count()
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})

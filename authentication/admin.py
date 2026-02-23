@@ -2,5 +2,16 @@ from django.contrib import admin
 from .models import Profile, RegistrationVerifyCode
 # Register your models here.
 
-admin.site.register(Profile)
-admin.site.register(RegistrationVerifyCode)
+class ProfileAdmin(admin.ModelAdmin):
+    list_display = ('user', 'image', 'phone', 'created_at', 'date_of_birth', 'gender', 'is_subscribed') 
+admin.site.register(Profile, ProfileAdmin)
+
+# class RegistrationVerifyCodeAdmin(admin.ModelAdmin):
+#     list_display = ('user', 'code', 'created_at')
+# admin.site.register(RegistrationVerifyCode)
+
+
+admin.site.site_header = "MAT Admin"
+admin.site.site_title = "MAT Admin Portal"
+admin.site.index_title = "Welcome to MAT Admin Portal" 
+admin.site.enable_nav_sidebar = True

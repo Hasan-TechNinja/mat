@@ -271,3 +271,35 @@ class ChangePassword(APIView):
         user.set_password(new_password)
         user.save()
         return Response({"message": "Password has been changed successfully!"}, status=status.HTTP_200_OK)
+
+
+class FollowToggleView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, user_id):
+        try:
+            target_profile = Profile.objects.get(user_id=user_id)
+        except Profile.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        my_profile = get_object_or_404(Profile, user=request.user)
+
+        if target_profile.user == request.user:
+            return Response({"error": "You cannot follow yourself"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if my_profile.following.filter(id=target_profile.id).exists():
+            my_profile.following.remove(target_profile)
+            return Response({"message": "Unfollowed successfully"}, status=status.HTTP_200_OK)
+        else:
+            my_profile.following.add(target_profile)
+
+            # Send notification to the followed user
+            from notification.fcm_utils import send_push_notification
+            send_push_notification(
+                user=target_profile.user,
+                title="New Follower",
+                body=f"{request.user.username} started following you.",
+                data={"type": "follow", "user_id": str(request.user.id)}
+            )
+
+            return Response({"message": "Followed successfully"}, status=status.HTTP_201_CREATED)

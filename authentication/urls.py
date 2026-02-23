@@ -10,5 +10,6 @@ urlpatterns = [
     path('password-reset/verify/', views.VerifyPasswordResetCodeView.as_view(), name='password-reset-verify'),
     path('password-reset/change/', views.ChangePasswordView.as_view(), name='password-reset-change'),
     path('profile/', views.ProfileView.as_view(), name='profile'),
-    path('change-password/', views.ChangePassword.as_view(), name='change-password')
+    path('change-password/', views.ChangePassword.as_view(), name='change-password'),
+    path('follow/<int:user_id>/', views.FollowToggleView.as_view(), name='follow-toggle'),
 ]
