@@ -1,3 +1,4 @@
+from rest_framework.decorators import permission_classes
 from django.shortcuts import render
 from django.db.models import Q, Count
 from django.utils import timezone
@@ -66,7 +67,44 @@ class CommentListCreateView(APIView):
 
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
+
+class CommentDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self, id):
+        try:
+            return Comment.objects.get(id=id)
+        except Comment.DoesNotExist:
+            return None
+
+    def get(self, request, id):
+        comment = self.get_object(id)
+        if comment is None:
+            return Response({"error": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
+        serializer = CommentSerializer(comment)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def put(self, request, id):
+        comment = self.get_object(id)
+        if comment is None:
+            return Response({"error": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
+        if comment.user != request.user:
+            return Response({"error": "You can only edit your own comments"}, status=status.HTTP_403_FORBIDDEN)
+        serializer = CommentSerializer(comment, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, id):
+        comment = self.get_object(id)
+        if comment is None:
+            return Response({"error": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
+        if comment.user != request.user:
+            return Response({"error": "You can only delete your own comments"}, status=status.HTTP_403_FORBIDDEN)
+        comment.delete()
+        return Response({"message": "Comment deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
 
 class PostLikeView(APIView):
