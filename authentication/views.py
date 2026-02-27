@@ -116,12 +116,16 @@ class LoginView(APIView):
                 
                 refresh = RefreshToken.for_user(user)
                 access_token = refresh.access_token
+
+                access_token['first_name'] = user.first_name
+                access_token['last_name'] = user.last_name
+                access_token['email'] = user.email
+                access_token['role'] = "admin" if user.is_superuser else "user"
                 
                 return Response({
                     'message': "Login Successful",
                     'refresh': str(refresh),
                     'access': str(access_token),
-                    'user': UserSerializer(user).data
                 }, status=status.HTTP_200_OK)
             return Response({'error': "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
