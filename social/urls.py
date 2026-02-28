@@ -3,6 +3,7 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    path('categories/', views.CategoryListView.as_view(), name='category-list'),
     path('posts/', views.PostListCreateView.as_view(), name='post-list-create'),
     path('posts/<int:post_id>/comments/', views.CommentListCreateView.as_view(), name='comment-list-create'),
     path('comment/detail/<int:id>/', views.CommentDetailView.as_view(), name="comment-detail"),

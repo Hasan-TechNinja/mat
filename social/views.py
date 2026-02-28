@@ -3,8 +3,8 @@ from django.shortcuts import render
 from django.db.models import Q, Count
 from django.utils import timezone
 from datetime import timedelta
-from .models import Post, PostImage, Comment, Wishlist
-from .serializers import PostSerializer, CommentSerializer, WishlistSerializer
+from .models import Post, PostImage, Comment, Wishlist, Category
+from .serializers import PostSerializer, CommentSerializer, WishlistSerializer, CategorySerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
@@ -278,4 +278,13 @@ class RecommendedPostView(APIView):
         ).order_by('-created_at')
 
         serializer = PostSerializer(posts, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class CategoryListView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        categories = Category.objects.all().order_by('name')
+        serializer = CategorySerializer(categories, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)

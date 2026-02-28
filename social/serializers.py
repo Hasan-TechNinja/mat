@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from . models import Post, PostImage, Comment, Wishlist
+from . models import Post, PostImage, Comment, Wishlist, Category
 from authentication.models import Profile
 from authentication.serializers import UserSerializer, ProfileSerializer
 
@@ -49,3 +49,9 @@ class WishlistSerializer(serializers.ModelSerializer):
     class Meta:
         model = Wishlist
         fields = ['id', 'user', 'post', 'created_at']
+
+
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ['id', 'name']
