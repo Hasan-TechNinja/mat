@@ -25,7 +25,26 @@ class PostListCreateView(APIView):
     def post(self, request):
         serializer = PostSerializer(data=request.data)
         if serializer.is_valid():
-            post = serializer.save(user=request.user)
+            save_kwargs = {'user': request.user}
+            amazon_link = serializer.validated_data.get('amazon_link')
+            
+            if amazon_link:
+                is_subscribed = False
+                user_subs = request.user.subscriptions.select_related('plan').filter(status='active')
+                for sub in user_subs:
+                    if sub.is_active_subscription and sub.plan.slug.lower() == 'pro':
+                        is_subscribed = True
+                        break
+                
+                if not is_subscribed:
+                    import urllib.parse
+                    parsed = urllib.parse.urlparse(amazon_link)
+                    query_params = urllib.parse.parse_qs(parsed.query)
+                    query_params['tag'] = ['giftmedia-21']
+                    new_query = urllib.parse.urlencode(query_params, doseq=True)
+                    save_kwargs['amazon_link'] = parsed._replace(query=new_query).geturl()
+
+            post = serializer.save(**save_kwargs)
 
             # Handle multiple image uploads
             images = request.FILES.getlist('images')
