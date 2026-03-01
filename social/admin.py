@@ -9,8 +9,20 @@ class PostImageInline(admin.TabularInline):
 class PostAdmin(admin.ModelAdmin):
     list_display = ('id', 'user', 'content', 'category', 'occasion', 'target_category', 'created_at', 'total_likes', 'total_comments', 'approval')
     search_fields = ('content',)
-    list_filter = ('category', 'occasion', 'target_category')
+    list_filter = ('category', 'occasion', 'target_category', 'approval')
     inlines = [PostImageInline]
+    actions = ['approve_posts', 'unapprove_posts']
+
+    @admin.action(description="Approve selected posts")
+    def approve_posts(self, request, queryset):
+        updated = queryset.update(approval=True)
+        self.message_user(request, f"{updated} posts were successfully approved.")
+
+    @admin.action(description="Unapprove selected posts")
+    def unapprove_posts(self, request, queryset):
+        updated = queryset.update(approval=False)
+        self.message_user(request, f"{updated} posts were successfully unapproved.")
+
 admin.site.register(Post, PostAdmin)
 
 class CommentAdmin(admin.ModelAdmin):

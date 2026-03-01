@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from . models import Post, PostImage, Comment, Wishlist, Category
+from . models import Post, PostImage, Comment, Wishlist, Category, Occasion
 from authentication.models import Profile
 from authentication.serializers import UserSerializer, ProfileSerializer
 
@@ -23,6 +23,7 @@ class PostSerializer(serializers.ModelSerializer):
         model = Post
         fields = [
             'id', 'user', 'content', 'category', 'occasion', 'amazon_link',
+            'amazon_product_name', 'amazon_product_image_url',
             'target_category', 'likes', 'comments', 'likes_count',
             'comments_count', 'views', 'created_at', 'profile', 'images'
         ]
@@ -54,4 +55,10 @@ class WishlistSerializer(serializers.ModelSerializer):
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
+        fields = ['id', 'name']
+
+
+class OccasionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Occasion
         fields = ['id', 'name']

@@ -3,13 +3,14 @@ from django.shortcuts import render
 from django.db.models import Q, Count
 from django.utils import timezone
 from datetime import timedelta
-from .models import Post, PostImage, Comment, Wishlist, Category
-from .serializers import PostSerializer, CommentSerializer, WishlistSerializer, CategorySerializer
+from .models import Post, PostImage, Comment, Wishlist, Category, Occasion
+from .serializers import PostSerializer, CommentSerializer, WishlistSerializer, CategorySerializer, OccasionSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
 from rest_framework.parsers import MultiPartParser, FormParser
 from notification.fcm_utils import send_push_notification
+from .utils import fetch_amazon_product_data
 
 # Create your views here.
 
@@ -43,6 +44,13 @@ class PostListCreateView(APIView):
                     query_params['tag'] = ['giftmedia-21']
                     new_query = urllib.parse.urlencode(query_params, doseq=True)
                     save_kwargs['amazon_link'] = parsed._replace(query=new_query).geturl()
+
+                # Fetch Amazon metadata
+                title, image_url = fetch_amazon_product_data(save_kwargs.get('amazon_link', amazon_link))
+                if title:
+                    save_kwargs['amazon_product_name'] = title
+                if image_url:
+                    save_kwargs['amazon_product_image_url'] = image_url
 
             post = serializer.save(**save_kwargs)
 
@@ -306,4 +314,13 @@ class CategoryListView(APIView):
     def get(self, request):
         categories = Category.objects.all().order_by('name')
         serializer = CategorySerializer(categories, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class OccasionListView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        occasions = Occasion.objects.all().order_by('name')
+        serializer = OccasionSerializer(occasions, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
