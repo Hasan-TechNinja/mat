@@ -18,6 +18,9 @@ class PostSerializer(serializers.ModelSerializer):
     comments_count = serializers.IntegerField(source='comments.count', read_only=True)
     profile = serializers.ImageField(source = 'user.profile.image', read_only=True)
     images = PostImageSerializer(many=True, read_only=True)
+    is_saved = serializers.SerializerMethodField()
+    is_liked = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
@@ -25,13 +28,29 @@ class PostSerializer(serializers.ModelSerializer):
             'id', 'user', 'content', 'category', 'occasion', 'amazon_link',
             'amazon_product_name', 'amazon_product_image_url',
             'target_category', 'likes', 'comments', 'likes_count',
-            'comments_count', 'views', 'created_at', 'profile', 'images'
+            'comments_count', 'views', 'created_at', 'profile', 'images',
+            'is_saved', 'is_liked', 'status'
         ]
 
     def get_comments(self, obj):
         # Get related comments and serialize them
         comments = obj.comment.all().order_by('-created_at')
         return CommentSerializer(comments, many=True).data
+
+    def get_is_saved(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return Wishlist.objects.filter(post=obj, user=request.user).exists()
+        return False
+
+    def get_is_liked(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.likes.filter(id=request.user.id).exists()
+        return False
+
+    def get_status(self, obj):
+        return self.context.get('status', None)
 
 
 

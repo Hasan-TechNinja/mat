@@ -20,11 +20,11 @@ class PostListCreateView(APIView):
 
     def get(self, request):
         posts = Post.objects.filter(approval=True).order_by('-created_at')
-        serializer = PostSerializer(posts, many=True)
+        serializer = PostSerializer(posts, many=True, context={'request': request})
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = PostSerializer(data=request.data)
+        serializer = PostSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             save_kwargs = {'user': request.user}
             amazon_link = serializer.validated_data.get('amazon_link')
@@ -60,7 +60,7 @@ class PostListCreateView(APIView):
                 PostImage.objects.create(post=post, image=image)
 
             # Re-serialize to include the newly created images
-            response_serializer = PostSerializer(post)
+            response_serializer = PostSerializer(post, context={'request': request})
             return Response(response_serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
@@ -166,7 +166,7 @@ class WishListView(APIView):
     # Get all wishlisted posts by the logged-in user
     def get(self, request):
         wishlists = Wishlist.objects.filter(user=request.user).order_by('-created_at')
-        serializer = WishlistSerializer(wishlists, many=True)
+        serializer = WishlistSerializer(wishlists, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request, post_id):
@@ -215,7 +215,7 @@ class FilteredPostView(APIView):
         if target:
             posts = posts.filter(target_category=target)
 
-        serializer = PostSerializer(posts.order_by('-created_at'), many=True)
+        serializer = PostSerializer(posts.order_by('-created_at'), many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -237,7 +237,7 @@ class PostSearchView(APIView):
             )
         ).order_by('-created_at')
 
-        serializer = PostSerializer(posts, many=True)
+        serializer = PostSerializer(posts, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -256,7 +256,7 @@ class TrendingPostView(APIView):
             engagement=Count('likes') + Count('comment')
         ).order_by('-engagement', '-created_at')
 
-        serializer = PostSerializer(posts, many=True)
+        serializer = PostSerializer(posts, many=True, context={'request': request, 'status': 'trending'})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -304,7 +304,7 @@ class RecommendedPostView(APIView):
             id__in=engaged_post_ids
         ).order_by('-created_at')
 
-        serializer = PostSerializer(posts, many=True)
+        serializer = PostSerializer(posts, many=True, context={'request': request, 'status': 'recommended'})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
