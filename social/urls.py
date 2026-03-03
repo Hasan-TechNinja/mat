@@ -15,4 +15,5 @@ urlpatterns = [
     path('posts/trending/', views.TrendingPostView.as_view(), name='trending-posts'),
     path('posts/recommended/', views.RecommendedPostView.as_view(), name='recommended-posts'),
     path('occasions/', views.OccasionListView.as_view(), name='occasion-list'),
+    path('community-activity/', views.CommunityActivityView.as_view(), name='community-activity'),
 ]

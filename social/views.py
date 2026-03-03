@@ -4,6 +4,7 @@ from django.db.models import Q, Count
 from django.utils import timezone
 from datetime import timedelta
 from .models import Post, PostImage, Comment, Wishlist, Category, Occasion
+from django.contrib.auth.models import User
 from .serializers import PostSerializer, CommentSerializer, WishlistSerializer, CategorySerializer, OccasionSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -250,7 +251,20 @@ class TrendingPostView(APIView):
         posts = Post.objects.filter(
             approval=True,
             created_at__gte=one_month_ago
-        ).annotate(
+        )
+
+        category = request.query_params.get('category')
+        occasion = request.query_params.get('occasion')
+        target = request.query_params.get('target')
+
+        if category:
+            posts = posts.filter(category_id=category)
+        if occasion:
+            posts = posts.filter(occasion_id=occasion)
+        if target:
+            posts = posts.filter(target_category=target)
+
+        posts = posts.annotate(
             likes_count=Count('likes'),
             comments_count=Count('comment'),
             engagement=Count('likes') + Count('comment')
@@ -302,7 +316,20 @@ class RecommendedPostView(APIView):
             Q(approval=True) & interest_filter
         ).exclude(
             id__in=engaged_post_ids
-        ).order_by('-created_at')
+        )
+
+        category = request.query_params.get('category')
+        occasion = request.query_params.get('occasion')
+        target = request.query_params.get('target')
+
+        if category:
+            posts = posts.filter(category_id=category)
+        if occasion:
+            posts = posts.filter(occasion_id=occasion)
+        if target:
+            posts = posts.filter(target_category=target)
+
+        posts = posts.order_by('-created_at')
 
         serializer = PostSerializer(posts, many=True, context={'request': request, 'status': 'recommended'})
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -324,3 +351,15 @@ class OccasionListView(APIView):
         occasions = Occasion.objects.all().order_by('name')
         serializer = OccasionSerializer(occasions, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+class CommunityActivityView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        gift_founds = Post.objects.exclude(amazon_link__isnull=True).exclude(amazon_link__exact='').count()
+        contributors = User.objects.filter(is_active=True).count()
+        
+        return Response({
+            "gift_founds": gift_founds,
+            "contributors": contributors
+        }, status=status.HTTP_200_OK)
