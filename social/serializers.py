@@ -20,6 +20,7 @@ class PostSerializer(serializers.ModelSerializer):
     images = PostImageSerializer(many=True, read_only=True)
     is_saved = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
+    is_following = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
 
     class Meta:
@@ -29,7 +30,7 @@ class PostSerializer(serializers.ModelSerializer):
             'amazon_product_name', 'amazon_product_image_url',
             'target_category', 'likes', 'comments', 'likes_count',
             'comments_count', 'views', 'created_at', 'profile', 'images',
-            'is_saved', 'is_liked', 'status'
+            'is_saved', 'is_liked', 'is_following', 'status'
         ]
 
     def get_comments(self, obj):
@@ -47,6 +48,17 @@ class PostSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request and request.user.is_authenticated:
             return obj.likes.filter(id=request.user.id).exists()
+        return False
+
+    def get_is_following(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            try:
+                request_profile = request.user.profile
+                post_user_profile = obj.user.profile
+                return request_profile.following.filter(id=post_user_profile.id).exists()
+            except Exception:
+                return False
         return False
 
     def get_status(self, obj):
