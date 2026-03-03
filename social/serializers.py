@@ -52,6 +52,21 @@ class PostSerializer(serializers.ModelSerializer):
     def get_status(self, obj):
         return self.context.get('status', None)
 
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        if instance.category:
+            representation['category'] = {
+                'id': instance.category.id,
+                'name': instance.category.name
+            }
+        if instance.occasion:
+            representation['occasion'] = {
+                'id': instance.occasion.id,
+                'name': instance.occasion.name
+            }
+        return representation
+
+
 
 
 class CommentSerializer(serializers.ModelSerializer):
