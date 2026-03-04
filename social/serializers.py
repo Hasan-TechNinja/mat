@@ -29,7 +29,7 @@ class PostSerializer(serializers.ModelSerializer):
             'id', 'user', 'content', 'category', 'occasion', 'amazon_link',
             'amazon_product_name', 'amazon_product_image_url',
             'target_category', 'likes', 'comments', 'likes_count',
-            'comments_count', 'views', 'created_at', 'profile', 'images',
+            'comments_count', 'views', 'link_clicks', 'created_at', 'profile', 'images',
             'is_saved', 'is_liked', 'is_following', 'status'
         ]
 

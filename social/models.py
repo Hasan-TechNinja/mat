@@ -30,6 +30,7 @@ class Post(models.Model):
     likes = models.ManyToManyField(User, related_name='liked_posts', blank=True)
     comments = models.ManyToManyField(User, through='Comment', related_name='commented_posts', blank=True)
     views = models.PositiveIntegerField(default=0)
+    link_clicks = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     approval = models.BooleanField(default=False)
 

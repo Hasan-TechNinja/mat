@@ -1,6 +1,7 @@
 from rest_framework.decorators import permission_classes
 from django.shortcuts import render
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Sum
+from django.db.models.functions import ExtractMonth
 from django.utils import timezone
 from datetime import timedelta
 from .models import Post, PostImage, Comment, Wishlist, Category, Occasion
@@ -167,6 +168,18 @@ class WishListView(APIView):
     # Get all wishlisted posts by the logged-in user
     def get(self, request):
         wishlists = Wishlist.objects.filter(user=request.user).order_by('-created_at')
+        
+        category = request.query_params.get('category')
+        occasion = request.query_params.get('occasion')
+        target = request.query_params.get('target')
+
+        if category:
+            wishlists = wishlists.filter(post__category_id=category)
+        if occasion:
+            wishlists = wishlists.filter(post__occasion_id=occasion)
+        if target:
+            wishlists = wishlists.filter(post__target_category=target)
+
         serializer = WishlistSerializer(wishlists, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -363,3 +376,117 @@ class CommunityActivityView(APIView):
             "gift_founds": gift_founds,
             "contributors": contributors
         }, status=status.HTTP_200_OK)
+
+
+class PostLinkClickView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, post_id):
+        try:
+            post = Post.objects.get(id=post_id)
+            post.link_clicks += 1
+            post.save(update_fields=['link_clicks'])
+            return Response({'message': 'Click incremented successfully', 'link_clicks': post.link_clicks}, status=status.HTTP_200_OK)
+        except Post.DoesNotExist:
+            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+class UserStatsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        
+        stats = Post.objects.filter(user=user).aggregate(
+            total_link_clicks=Sum('link_clicks'),
+            total_likes=Count('likes')
+        )
+        
+        return Response({
+            'total_link_clicks': stats['total_link_clicks'] or 0,
+            'total_likes': stats['total_likes'] or 0
+        }, status=status.HTTP_200_OK)
+
+
+class TopClickedPostView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        posts = Post.objects.filter(approval=True).order_by('-link_clicks', '-created_at')
+        
+        category = request.query_params.get('category')
+        occasion = request.query_params.get('occasion')
+        target = request.query_params.get('target')
+
+        if category:
+            posts = posts.filter(category_id=category)
+        if occasion:
+            posts = posts.filter(occasion_id=occasion)
+        if target:
+            posts = posts.filter(target_category=target)
+
+        serializer = PostSerializer(posts, many=True, context={'request': request, 'status': 'top-clicked'})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class UserPostStatusCountView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        
+        # Currently, the Post model only has an `approval` BooleanField.
+        # True = Approved, False = Pending
+        approved_count = Post.objects.filter(user=user, approval=True).count()
+        pending_count = Post.objects.filter(user=user, approval=False).count()
+        
+        # Since there is no `rejected` field or status choice in the model, 
+        # it will be returned as 0 for now.
+        rejected_count = 0
+        
+        return Response({
+            'approved': approved_count,
+            'pending': pending_count,
+            'rejected': rejected_count
+        }, status=status.HTTP_200_OK)
+
+
+class LinkEngagementView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        year_param = request.query_params.get('year')
+        if not year_param:
+            year = timezone.now().year
+        else:
+            try:
+                year = int(year_param)
+            except ValueError:
+                return Response({"error": "Invalid year format"}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = request.user
+        
+        # Filter posts by user and the specified year
+        posts = Post.objects.filter(user=user, created_at__year=year)
+        
+        # Aggregate link clicks grouped by month of post creation
+        monthly_clicks = posts.annotate(month=ExtractMonth('created_at')) \
+                              .values('month') \
+                              .annotate(total_clicks=Sum('link_clicks')) \
+                              .order_by('month')
+
+        # Format the output to ensure all 12 months are included
+        months_data = {i: 0 for i in range(1, 13)}
+        for entry in monthly_clicks:
+            months_data[entry['month']] = entry['total_clicks'] or 0
+
+        month_names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        data = []
+        for i in range(1, 13):
+            data.append({
+                "month": month_names[i-1],
+                "clicks": months_data[i]
+            })
+
+        return Response(data, status=status.HTTP_200_OK)
+
