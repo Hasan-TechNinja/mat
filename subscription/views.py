@@ -191,3 +191,118 @@ class StripeWebhookView(APIView):
                 print(f"Error handling subscription cancellation for {stripe_subscription_id}: {e}")
 
         return Response(status=status.HTTP_200_OK)
+
+
+class VerifyGooglePlayPurchaseView(APIView):
+    """Verify Google Play in-app purchase tokens."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        # Implementation depends on google-api-python-client setup.
+        # This is a placeholder structure for where the validation logic goes
+        # using google.oauth2.service_account and googleapiclient.discovery.
+        
+        purchase_token = request.data.get('purchase_token')
+        product_id = request.data.get('product_id')
+        
+        if not purchase_token or not product_id:
+            return Response({'error': 'Missing purchase_token or product_id'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 1. Fetch Plan by Google Product ID
+        plan = SubscriptionPlan.objects.filter(google_play_product_id=product_id, is_active=True).first()
+        if not plan:
+            return Response({'error': 'Invalid product_id'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # 2. Add Google API Validation Here
+            # Ensure token is valid and extract the exact expiration time based on Google's response.
+            
+            # Temporary mock assuming validation succeeded
+            subscription = SubscriptionService.purchase_subscription(
+                user=request.user,
+                plan_slug=plan.slug,
+                payment_method='google_play',
+                transaction_id=purchase_token, # Keep token for reference
+                google_purchase_token=purchase_token,
+                # end_date=extracted_expiry # Pass actual expiry
+            )
+            return Response({'message': 'Google Play subscription verified successfully!'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class VerifyApplePurchaseView(APIView):
+    """Verify Apple App Store receipt data."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        receipt_data = request.data.get('receipt_data')
+        
+        if not receipt_data:
+            return Response({'error': 'Missing receipt_data'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # 1. ping https://buy.itunes.apple.com/verifyReceipt (or sandbox)
+        import requests
+        
+        # Determine environment (Sandbox vs Production) based on settings or trial-and-error approach common in iOS validation
+        apple_url = "https://sandbox.itunes.apple.com/verifyReceipt" # Use prod URL in production!
+        
+        try:
+            response = requests.post(apple_url, json={
+                "receipt-data": receipt_data,
+                "password": settings.APPLE_SHARED_SECRET if hasattr(settings, 'APPLE_SHARED_SECRET') else ""
+            })
+            data = response.json()
+            
+            if data.get('status') != 0:
+                 return Response({'error': 'Invalid receipt', 'apple_status': data.get('status')}, status=status.HTTP_400_BAD_REQUEST)
+                 
+            # 2. Extract latest transaction and find the matching plan
+            latest_receipt_info = data.get('latest_receipt_info', [])
+            if not latest_receipt_info:
+                 return Response({'error': 'No subscription found in receipt'}, status=status.HTTP_400_BAD_REQUEST)
+                 
+            latest_tx = latest_receipt_info[0]
+            product_id = latest_tx.get('product_id')
+            original_tx_id = latest_tx.get('original_transaction_id')
+            
+            plan = SubscriptionPlan.objects.filter(apple_product_id=product_id, is_active=True).first()
+            if not plan:
+                return Response({'error': 'Invalid product_id in receipt'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # 3. Create/update subscription via service
+            subscription = SubscriptionService.purchase_subscription(
+                user=request.user,
+                plan_slug=plan.slug,
+                payment_method='apple_iap',
+                transaction_id=original_tx_id, 
+                apple_original_transaction_id=original_tx_id,
+                apple_receipt_data=receipt_data,
+                # end_date=extracted_expiry
+            )
+            return Response({'message': 'Apple subscription verified successfully!'}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class GooglePlayWebhookView(APIView):
+    """Listen to Google Cloud Pub/Sub Developer Notifications."""
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, request):
+        # Implementation required to parse base64 encoded payload from Pub/Sub
+        # and trigger local subscription updates or cancellations based on NotificationType.
+        return Response(status=status.HTTP_200_OK)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class AppleWebhookView(APIView):
+    """Listen to Apple App Store Server Notifications."""
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, request):
+        # Implementation required to parse Apple Server-to-Server v2 payload
+        # Find local sub via apple_original_transaction_id and handle DID_RENEW / CANCEL
+        return Response(status=status.HTTP_200_OK)

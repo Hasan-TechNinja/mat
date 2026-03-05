@@ -8,6 +8,8 @@ class SubscriptionPlan(models.Model):
     slug = models.SlugField(unique=True)    # e.g. "free", "pro"
     price = models.DecimalField(max_digits=8, decimal_places=2, default=0.00)
     stripe_price_id = models.CharField(max_length=255, null=True, blank=True, help_text="Stripe Price ID (e.g., price_1N...) for this plan")
+    google_play_product_id = models.CharField(max_length=255, null=True, blank=True, help_text="Google Play Product ID for this plan")
+    apple_product_id = models.CharField(max_length=255, null=True, blank=True, help_text="Apple App Store Product ID for this plan")
     duration_days = models.IntegerField(default=30)  # 30 = monthly
     features = models.JSONField(default=list, blank=True)
     is_active = models.BooleanField(default=True)
@@ -45,6 +47,9 @@ class UserSubscription(models.Model):
     transaction_id = models.CharField(max_length=255, null=True, blank=True)
     stripe_customer_id = models.CharField(max_length=255, null=True, blank=True)
     stripe_subscription_id = models.CharField(max_length=255, null=True, blank=True)
+    google_purchase_token = models.CharField(max_length=1000, null=True, blank=True)
+    apple_original_transaction_id = models.CharField(max_length=255, null=True, blank=True)
+    apple_receipt_data = models.TextField(null=True, blank=True)
     auto_renew = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

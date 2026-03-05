@@ -47,7 +47,7 @@ class SubscriptionService:
         return subscription
 
     @staticmethod
-    def purchase_subscription(user, plan_slug, payment_method='other', transaction_id=None, stripe_customer_id=None, stripe_subscription_id=None, end_date=None):
+    def purchase_subscription(user, plan_slug, payment_method='other', transaction_id=None, stripe_customer_id=None, stripe_subscription_id=None, google_purchase_token=None, apple_original_transaction_id=None, apple_receipt_data=None, end_date=None):
         """
         Purchase or upgrade a subscription.
         - Cancels existing active subscription (if any).
@@ -84,6 +84,9 @@ class SubscriptionService:
             transaction_id=transaction_id,
             stripe_customer_id=stripe_customer_id,
             stripe_subscription_id=stripe_subscription_id,
+            google_purchase_token=google_purchase_token,
+            apple_original_transaction_id=apple_original_transaction_id,
+            apple_receipt_data=apple_receipt_data,
             auto_renew=True,
         )
 

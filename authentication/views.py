@@ -236,7 +236,11 @@ class ProfileView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        profile = get_object_or_404(Profile, user=request.user)
+        user_id = request.query_params.get('id')
+        if user_id:
+            profile = get_object_or_404(Profile, user_id=user_id)
+        else:
+            profile = get_object_or_404(Profile, user=request.user)
         serializer = ProfileSerializer(profile)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
