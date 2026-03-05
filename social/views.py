@@ -515,7 +515,15 @@ class UserPostListView(APIView):
     def get(self, request, pk):
         try:
             user = User.objects.get(id=pk)
-            posts = Post.objects.filter(user=user).order_by('-created_at')
+            
+            # Default order is descending (newest first)
+            order = request.query_params.get('order', 'desc').lower()
+            
+            if order == 'asc':
+                posts = Post.objects.filter(user=user).order_by('created_at')
+            else:
+                posts = Post.objects.filter(user=user).order_by('-created_at')
+                
             serializer = PostSerializer(posts, many=True, context={'request': request})
             return Response(serializer.data, status=status.HTTP_200_OK)
         except User.DoesNotExist:

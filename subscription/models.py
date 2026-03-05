@@ -7,6 +7,7 @@ class SubscriptionPlan(models.Model):
     name = models.CharField(max_length=50)  # e.g. "Free", "Pro"
     slug = models.SlugField(unique=True)    # e.g. "free", "pro"
     price = models.DecimalField(max_digits=8, decimal_places=2, default=0.00)
+    stripe_price_id = models.CharField(max_length=255, null=True, blank=True, help_text="Stripe Price ID (e.g., price_1N...) for this plan")
     duration_days = models.IntegerField(default=30)  # 30 = monthly
     features = models.JSONField(default=list, blank=True)
     is_active = models.BooleanField(default=True)
@@ -42,6 +43,8 @@ class UserSubscription(models.Model):
     end_date = models.DateTimeField(null=True, blank=True)
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default='free')
     transaction_id = models.CharField(max_length=255, null=True, blank=True)
+    stripe_customer_id = models.CharField(max_length=255, null=True, blank=True)
+    stripe_subscription_id = models.CharField(max_length=255, null=True, blank=True)
     auto_renew = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

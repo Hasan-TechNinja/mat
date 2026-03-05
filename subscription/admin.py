@@ -4,7 +4,7 @@ from .models import SubscriptionPlan, UserSubscription
 
 @admin.register(SubscriptionPlan)
 class SubscriptionPlanAdmin(admin.ModelAdmin):
-    list_display = ['name', 'slug', 'price', 'duration_days', 'is_active']
+    list_display = ['name', 'slug', 'price', 'stripe_price_id', 'duration_days', 'is_active']
     list_filter = ['is_active']
     prepopulated_fields = {'slug': ('name',)}
 

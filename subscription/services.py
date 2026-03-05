@@ -1,7 +1,10 @@
 from django.utils import timezone
 from datetime import timedelta
 from .models import SubscriptionPlan, UserSubscription
+import stripe
+from django.conf import settings
 
+stripe.api_key = settings.STRIPE_SECRET_KEY
 
 class SubscriptionService:
     """Centralized business logic for subscription management."""
@@ -44,7 +47,7 @@ class SubscriptionService:
         return subscription
 
     @staticmethod
-    def purchase_subscription(user, plan_slug, payment_method='other', transaction_id=None):
+    def purchase_subscription(user, plan_slug, payment_method='other', transaction_id=None, stripe_customer_id=None, stripe_subscription_id=None, end_date=None):
         """
         Purchase or upgrade a subscription.
         - Cancels existing active subscription (if any).
@@ -66,7 +69,10 @@ class SubscriptionService:
 
         # Create the new subscription
         start = timezone.now()
-        end = start + timedelta(days=plan.duration_days) if plan.duration_days > 0 else None
+        if end_date is None:
+            end = start + timedelta(days=plan.duration_days) if plan.duration_days > 0 else None
+        else:
+            end = end_date
 
         subscription = UserSubscription.objects.create(
             user=user,
@@ -76,6 +82,8 @@ class SubscriptionService:
             end_date=end,
             payment_method=payment_method,
             transaction_id=transaction_id,
+            stripe_customer_id=stripe_customer_id,
+            stripe_subscription_id=stripe_subscription_id,
             auto_renew=True,
         )
 
@@ -99,6 +107,16 @@ class SubscriptionService:
 
         if active_sub.plan.slug == 'free':
             raise ValueError("Cannot cancel the free plan.")
+
+        # If it's a Stripe subscription, try cancelling it on Stripe
+        if active_sub.stripe_subscription_id:
+            try:
+                stripe.Subscription.delete(active_sub.stripe_subscription_id)
+            except stripe.error.StripeError as e:
+                # Log the error. For now we will print. In a real application, use the logging module.
+                print(f"Stripe cancellation error: {e}")
+                # We optionally could raise ValueError or allow local cancellation anyway.
+                # Continuing with local cancellation so the user isn't stuck.
 
         active_sub.status = 'cancelled'
         active_sub.auto_renew = False
