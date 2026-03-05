@@ -21,4 +21,7 @@ urlpatterns = [
     path('user/stats/', views.UserStatsView.as_view(), name='user-stats'),
     path('user/post-statuses/', views.UserPostStatusCountView.as_view(), name='user-post-statuses'),
     path('user/link-engagement/', views.LinkEngagementView.as_view(), name='user-link-engagement'),
+    path('user/posts/', views.MyPostView.as_view(), name='my-posts'),
+    path('user/posts/<int:post_id>/', views.MyPostView.as_view(), name='my-post-detail'),
+    path('other-user/posts/<int:pk>/', views.UserPostListView.as_view(), name='user-post-list'),
 ]

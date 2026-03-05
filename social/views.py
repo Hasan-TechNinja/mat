@@ -490,3 +490,33 @@ class LinkEngagementView(APIView):
 
         return Response(data, status=status.HTTP_200_OK)
 
+
+class MyPostView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        posts = Post.objects.filter(user=user).order_by('-created_at')
+        serializer = PostSerializer(posts, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def delete(self, request, post_id):
+        try:
+            post = Post.objects.get(id=post_id)
+            post.delete()
+            return Response({'message': 'Post deleted successfully'}, status=status.HTTP_200_OK)
+        except Post.DoesNotExist:
+            return Response({'error': 'Post not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+class UserPostListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pk):
+        try:
+            user = User.objects.get(id=pk)
+            posts = Post.objects.filter(user=user).order_by('-created_at')
+            serializer = PostSerializer(posts, many=True, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
