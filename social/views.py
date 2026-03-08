@@ -4,7 +4,7 @@ from django.db.models import Q, Count, Sum
 from django.db.models.functions import ExtractMonth
 from django.utils import timezone
 from datetime import timedelta
-from .models import Post, PostImage, Comment, Wishlist, Category, Occasion
+from .models import Post, PostImage, Comment, Wishlist, Category, Occasion, LinkClick
 from django.contrib.auth.models import User
 from .serializers import PostSerializer, CommentSerializer, WishlistSerializer, CategorySerializer, OccasionSerializer
 from rest_framework.views import APIView
@@ -386,6 +386,10 @@ class PostLinkClickView(APIView):
             post = Post.objects.get(id=post_id)
             post.link_clicks += 1
             post.save(update_fields=['link_clicks'])
+            
+            # Log the click event
+            LinkClick.objects.create(post=post)
+            
             return Response({'message': 'Click incremented successfully', 'link_clicks': post.link_clicks}, status=status.HTTP_200_OK)
         except Post.DoesNotExist:
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -465,15 +469,15 @@ class LinkEngagementView(APIView):
                 return Response({"error": "Invalid year format"}, status=status.HTTP_400_BAD_REQUEST)
 
         user = request.user
-        
-        # Filter posts by user and the specified year
-        posts = Post.objects.filter(user=user, created_at__year=year)
-        
-        # Aggregate link clicks grouped by month of post creation
-        monthly_clicks = posts.annotate(month=ExtractMonth('created_at')) \
-                              .values('month') \
-                              .annotate(total_clicks=Sum('link_clicks')) \
-                              .order_by('month')
+        # Aggregate link clicks grouped by month of click creation
+        monthly_clicks = LinkClick.objects.filter(
+            post__user=user, 
+            created_at__year=year
+        ).annotate(
+            month=ExtractMonth('created_at')
+        ).values('month').annotate(
+            total_clicks=Count('id')
+        ).order_by('month')
 
         # Format the output to ensure all 12 months are included
         months_data = {i: 0 for i in range(1, 13)}
