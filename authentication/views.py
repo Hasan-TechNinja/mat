@@ -2,7 +2,7 @@ from urllib import request
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.models import User
 from . models import Profile, RegistrationVerifyCode, PasswordResetCode
-from .serializers import RegisterSerializer, LoginSerializer, ProfileSerializer, UserSerializer
+from .serializers import RegisterSerializer, LoginSerializer, ProfileSerializer, UserSerializer, SocialAuthSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -311,3 +311,56 @@ class FollowToggleView(APIView):
             )
 
             return Response({"message": "Followed successfully"}, status=status.HTTP_201_CREATED)
+
+
+class SocialAuthView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = SocialAuthSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data.get('email')
+            first_name = serializer.validated_data.get('first_name', '')
+            last_name = serializer.validated_data.get('last_name', '')
+
+            user = User.objects.filter(email=email).first()
+
+            if not user:
+                base_username = email.split('@')[0]
+                username = base_username
+                while User.objects.filter(username=username).exists():
+                    username = f"{base_username}_{random.randint(1000, 9999)}"
+
+                user = User.objects.create_user(
+                    username=username,
+                    email=email,
+                    first_name=first_name,
+                    last_name=last_name,
+                    password=None,
+                    is_active=True
+                )
+                
+                Profile.objects.create(
+                    user=user,
+                    gender='Other',
+                )
+            else:
+                if not user.is_active:
+                    user.is_active = True
+                    user.save()
+
+            refresh = RefreshToken.for_user(user)
+            access_token = refresh.access_token
+
+            access_token['first_name'] = user.first_name
+            access_token['last_name'] = user.last_name
+            access_token['email'] = user.email
+            access_token['role'] = "admin" if user.is_superuser else "user"
+
+            return Response({
+                'message': "Social Authentication Successful",
+                'refresh': str(refresh),
+                'access': str(access_token),
+            }, status=status.HTTP_200_OK)
+            
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
