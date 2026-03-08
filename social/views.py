@@ -510,7 +510,7 @@ class MyPostView(APIView):
 
 
 class UserPostListView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request, pk):
         try:
@@ -520,9 +520,9 @@ class UserPostListView(APIView):
             order = request.query_params.get('order', 'desc').lower()
             
             if order == 'asc':
-                posts = Post.objects.filter(user=user).order_by('created_at')
+                posts = Post.objects.filter(user=user, approval=True).order_by('created_at')
             else:
-                posts = Post.objects.filter(user=user).order_by('-created_at')
+                posts = Post.objects.filter(user=user, approval=True).order_by('-created_at')
                 
             serializer = PostSerializer(posts, many=True, context={'request': request})
             return Response(serializer.data, status=status.HTTP_200_OK)

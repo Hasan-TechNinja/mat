@@ -13,6 +13,7 @@ class Occasion(models.Model):
         return self.name
 
 TARGET_CATEGORIES = [
+    ('All', 'All'),
     ('Men', 'Men'),
     ('Women', 'Women'),
     ('Kids', 'Kids'),
@@ -23,7 +24,7 @@ class Post(models.Model):
     content = models.TextField()
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, related_name='posts')
     occasion = models.ForeignKey(Occasion, on_delete=models.SET_NULL, null=True, related_name='posts')
-    amazon_link = models.URLField(blank=True, null=True)
+    amazon_link = models.URLField(blank=True, null=True, max_length=1000)
     amazon_product_name = models.CharField(max_length=255, blank=True, null=True)
     amazon_product_image_url = models.URLField(max_length=1000, blank=True, null=True)
     target_category = models.CharField(max_length=20, choices=TARGET_CATEGORIES)
