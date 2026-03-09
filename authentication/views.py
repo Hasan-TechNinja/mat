@@ -99,6 +99,40 @@ class RegisterVerificationView(APIView):
             return Response({"error": "Invalid verification code!"}, status=status.HTTP_400_BAD_REQUEST)
         
 
+class ResendRegistrationOTPView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+
+        if not email:
+            return Response({"error": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return Response({"error": "User with this email does not exist!"}, status=status.HTTP_404_NOT_FOUND)
+        
+        if user.is_active:
+            return Response({"error": "User is already verified and active."}, status=status.HTTP_400_BAD_REQUEST)
+
+        code = random.randint(1000, 9999)
+        RegistrationVerifyCode.objects.filter(user=user).delete()
+        RegistrationVerifyCode.objects.create(user=user, code=code)
+
+        try:
+            send_mail(
+                'Verification Code',
+                f'Your verification code is: {code}',
+                'noreply@mat.com',
+                [email],
+                fail_silently=False,
+            )
+        except Exception as e:
+            print(f"Failed to send email: {e}")
+            return Response({'message': 'Failed to send email, but code generated: ' + str(code)}, status=status.HTTP_201_CREATED)
+
+        return Response({'message': 'A new verification code has been sent to your email.'}, status=status.HTTP_200_OK)
+
 
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -162,6 +196,37 @@ class ForgetPasswordView(APIView):
             
         return Response({"message": "A password reset code has been sent to your email."}, status=status.HTTP_200_OK)
 
+
+class ResendPasswordResetOTPView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = request.data.get("email")
+
+        if not email:
+            return Response({"error": "Email is required!"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return Response({"error": "User with this email does not exist!"}, status=status.HTTP_404_NOT_FOUND)
+            
+        code = random.randint(1000, 9999)
+
+        PasswordResetCode.objects.filter(user=user).delete()
+        PasswordResetCode.objects.create(user=user, code=code)
+        try:
+            send_mail(
+                "Password reset code",
+                f"Your new password reset code is {code}",
+                "noreply@mat.com",
+                [email],
+                fail_silently=False,
+            )
+        except Exception as e:
+            print(f"Failed to send email: {e}")
+            return Response({"message": "Failed to send email, but code generated: " + str(code)}, status=status.HTTP_200_OK)
+            
+        return Response({"message": "A new password reset code has been sent to your email."}, status=status.HTTP_200_OK)
 
 
 class VerifyPasswordResetCodeView(APIView):
