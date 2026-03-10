@@ -532,3 +532,73 @@ class UserPostListView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         except User.DoesNotExist:
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+class PostDetailsView(APIView):
+    permission_classes = [permissions.AllowAny]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def get(self, request, pk):
+        try:
+            post = Post.objects.get(id=pk)
+            serializer = PostSerializer(post, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Post.DoesNotExist:
+            return Response({'error': 'Post not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    def delete(self, request, pk):
+        try:
+            post = Post.objects.get(id=pk)
+            post.delete()
+            return Response({'message': 'Post deleted successfully'}, status=status.HTTP_200_OK)
+        except Post.DoesNotExist:
+            return Response({'error': 'Post not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    def put(self, request, pk):
+        try:
+            post = Post.objects.get(id=pk)
+            serializer = PostSerializer(post, data=request.data, partial=True)
+            if serializer.is_valid():
+                save_kwargs = {}
+                amazon_link = serializer.validated_data.get('amazon_link')
+                
+                if amazon_link and amazon_link != post.amazon_link:
+                    is_subscribed = False
+                    if request.user.is_authenticated:
+                        user_subs = request.user.subscriptions.select_related('plan').filter(status='active')
+                        for sub in user_subs:
+                            if hasattr(sub, 'is_active_subscription') and getattr(sub, 'is_active_subscription') and sub.plan.slug.lower() == 'pro':
+                                is_subscribed = True
+                                break
+                            elif hasattr(sub, 'is_active_subscription') is False and sub.plan.slug.lower() == 'pro':
+                                is_subscribed = True
+                                break
+                    
+                    if not is_subscribed:
+                        import urllib.parse
+                        parsed = urllib.parse.urlparse(amazon_link)
+                        query_params = urllib.parse.parse_qs(parsed.query)
+                        query_params['tag'] = ['giftmedia-21']
+                        new_query = urllib.parse.urlencode(query_params, doseq=True)
+                        save_kwargs['amazon_link'] = parsed._replace(query=new_query).geturl()
+
+                    # Fetch Amazon metadata
+                    title, image_url = fetch_amazon_product_data(save_kwargs.get('amazon_link', amazon_link))
+                    if title:
+                        save_kwargs['amazon_product_name'] = title
+                    if image_url:
+                        save_kwargs['amazon_product_image_url'] = image_url
+
+                serializer.save(**save_kwargs)
+
+                # Handle multiple image uploads during update
+                images = request.FILES.getlist('images')
+                if images:
+                    for image in images:
+                        PostImage.objects.create(post=post, image=image)
+
+                # Re-serialize to include the updated images
+                response_serializer = PostSerializer(post, context={'request': request})
+                return Response(response_serializer.data, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Post.DoesNotExist:
+            return Response({'error': 'Post not found'}, status=status.HTTP_404_NOT_FOUND)

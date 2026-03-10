@@ -24,4 +24,5 @@ urlpatterns = [
     path('user/posts/', views.MyPostView.as_view(), name='my-posts'),
     path('user/posts/<int:post_id>/', views.MyPostView.as_view(), name='my-post-detail'),
     path('other-user/posts/<int:pk>/', views.UserPostListView.as_view(), name='user-post-list'),
+    path('post/details/<int:pk>/', views.PostDetailsView.as_view(), name='post-details'),
 ]
