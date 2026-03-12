@@ -21,7 +21,25 @@ class PostListCreateView(APIView):
     parser_classes = [MultiPartParser, FormParser]
 
     def get(self, request):
-        posts = Post.objects.filter(approval=True).order_by('-created_at')
+        posts = Post.objects.filter(approval=True)
+
+        user = request.user
+        if hasattr(user, 'profile') and user.profile.date_of_birth:
+            today = timezone.now().date()
+            born = user.profile.date_of_birth
+            age = today.year - born.year - ((today.month, today.day) < (born.month, born.day))
+            
+            if age < 18:
+                posts = posts.filter(target_category__in=['Kids', 'All'])
+            else:
+                if user.profile.gender == 'Male':
+                    posts = posts.filter(target_category__in=['Men', 'Kids', 'All'])
+                elif user.profile.gender == 'Female':
+                    posts = posts.filter(target_category__in=['Women', 'Kids', 'All'])
+                else:
+                    posts = posts.filter(target_category__in=['Kids', 'All'])
+                
+        posts = posts.order_by('-created_at')
         serializer = PostSerializer(posts, many=True, context={'request': request})
         return Response(serializer.data)
 
