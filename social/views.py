@@ -255,20 +255,66 @@ class PostSearchView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
-        query = request.query_params.get('query', '').strip()
+        gender = request.query_params.get('gender', '').strip()
+        age = request.query_params.get('age', '').strip()
+        query = request.query_params.get('                ', '').strip()
+        category = request.query_params.get('category', '').strip()
+        occasion = request.query_params.get('occasion', '').strip()
+        target = request.query_params.get('target', '').strip()
 
-        if not query:
+        if not any([gender, age, query, category, occasion, target]):
             return Response([], status=status.HTTP_200_OK)
 
-        posts = Post.objects.filter(
-            Q(approval=True) & (
+        posts = Post.objects.filter(approval=True)
+
+        if category:
+            if category.isdigit():
+                posts = posts.filter(category_id=category)
+            else:
+                posts = posts.filter(category__name__icontains=category)
+
+        if occasion:
+            if occasion.isdigit():
+                posts = posts.filter(occasion_id=occasion)
+            else:
+                posts = posts.filter(occasion__name__icontains=occasion)
+
+        if target:
+            posts = posts.filter(target_category__icontains=target)
+
+        # Logic for gender and age to filter target_category
+        target_filters = []
+        if age and age.isdigit():
+            age_int = int(age)
+            if age_int < 18:
+                target_filters.append('Kids')
+            else:
+                if gender.lower() == 'male':
+                    target_filters.append('Men')
+                elif gender.lower() == 'female':
+                    target_filters.append('Women')
+        elif gender:
+            if gender.lower() == 'male':
+                target_filters.append('Men')
+            elif gender.lower() == 'female':
+                target_filters.append('Women')
+        
+        if target_filters:
+            if 'All' not in target_filters:
+                target_filters.append('All')
+            posts = posts.filter(target_category__in=target_filters)
+
+        # Broad search using 'query' parameter
+        if query:
+            posts = posts.filter(
                 Q(content__icontains=query) |
                 Q(category__name__icontains=query) |
                 Q(occasion__name__icontains=query) |
-                Q(target_category__icontains=query)
+                Q(target_category__icontains=query) |
+                Q(amazon_product_name__icontains=query)
             )
-        ).order_by('-created_at')
 
+        posts = posts.order_by('-created_at')
         serializer = PostSerializer(posts, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
