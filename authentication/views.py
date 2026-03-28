@@ -410,18 +410,20 @@ class SocialAuthView(APIView):
                     email=email,
                     first_name=first_name,
                     last_name=last_name,
-                    password=None,
-                    is_active=True
                 )
+                user.set_unusable_password()
+                user.is_active = True
+                user.save()
                 
                 Profile.objects.create(
                     user=user,
                     gender='Other',
                 )
             else:
-                if not user.is_active:
-                    user.is_active = True
-                    user.save()
+                user.first_name = first_name if first_name else user.first_name
+                user.last_name = last_name if last_name else user.last_name
+                user.is_active = True
+                user.save()
 
             refresh = RefreshToken.for_user(user)
             access_token = refresh.access_token
