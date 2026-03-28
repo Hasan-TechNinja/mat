@@ -431,10 +431,19 @@ class SocialAuthView(APIView):
             access_token['email'] = user.email
             access_token['role'] = "admin" if user.is_superuser else "user"
 
+            user = {
+                    'user_id': user.id,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
+                    'email': user.email,
+                    'role': "admin" if user.is_superuser else "user",
+                }
+
             return Response({
                 'message': "Social Authentication Successful",
                 'refresh': str(refresh),
                 'access': str(access_token),
+                'user': user,
             }, status=status.HTTP_200_OK)
             
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
