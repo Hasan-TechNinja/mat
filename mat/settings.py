@@ -129,10 +129,14 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [BASE_DIR / 'static']
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+# STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_ROOT = '/var/www/mat/static/'
+
+# MEDIA_URL = '/media/'
+# MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_URL = '/var/www/mat/media/'
+MEDIA_ROOT = '/var/www/mat/media/'
+
 TIME_ZONE = 'localtime'
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
