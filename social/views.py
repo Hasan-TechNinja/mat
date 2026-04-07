@@ -21,7 +21,8 @@ class PostListCreateView(APIView):
     parser_classes = [MultiPartParser, FormParser]
 
     def get(self, request):
-        posts = Post.objects.filter(approval=True)
+        # Include approved posts from others AND all of the current user's own posts
+        posts = Post.objects.filter(Q(approval=True) | Q(user=request.user)).distinct()
 
         user = request.user
         if hasattr(user, 'profile') and user.profile.date_of_birth:
