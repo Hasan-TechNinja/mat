@@ -30,15 +30,16 @@ class PostListCreateView(APIView):
             born = user.profile.date_of_birth
             age = today.year - born.year - ((today.month, today.day) < (born.month, born.day))
             
+            # Always include the user's own posts, regardless of target_category
             if age < 18:
-                posts = posts.filter(target_category__in=['Kids', 'All'])
+                posts = posts.filter(Q(user=request.user) | Q(target_category__in=['Kids', 'All']))
             else:
                 if user.profile.gender == 'Male':
-                    posts = posts.filter(target_category__in=['Men', 'Kids', 'All'])
+                    posts = posts.filter(Q(user=request.user) | Q(target_category__in=['Men', 'Kids', 'All']))
                 elif user.profile.gender == 'Female':
-                    posts = posts.filter(target_category__in=['Women', 'Kids', 'All'])
+                    posts = posts.filter(Q(user=request.user) | Q(target_category__in=['Women', 'Kids', 'All']))
                 else:
-                    posts = posts.filter(target_category__in=['Kids', 'All'])
+                    posts = posts.filter(Q(user=request.user) | Q(target_category__in=['Kids', 'All']))
                 
         posts = posts.order_by('-created_at')
         serializer = PostSerializer(posts, many=True, context={'request': request})
