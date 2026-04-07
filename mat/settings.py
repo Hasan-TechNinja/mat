@@ -133,7 +133,7 @@ STATIC_ROOT = '/var/www/mat/static/'
 
 # MEDIA_URL = '/media/'
 # MEDIA_ROOT = BASE_DIR / 'media'
-MEDIA_URL = '/var/www/mat/media/'
+MEDIA_URL = '/media/'
 MEDIA_ROOT = '/var/www/mat/media/'
 
 TIME_ZONE = 'localtime'
