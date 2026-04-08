@@ -259,7 +259,7 @@ class PostSearchView(APIView):
     def get(self, request):
         gender = request.query_params.get('gender', '').strip()
         age = request.query_params.get('age', '').strip()
-        query = request.query_params.get('                ', '').strip()
+        query = request.query_params.get('q', '').strip()
         category = request.query_params.get('category', '').strip()
         occasion = request.query_params.get('occasion', '').strip()
         target = request.query_params.get('target', '').strip()
@@ -313,7 +313,10 @@ class PostSearchView(APIView):
                 Q(category__name__icontains=query) |
                 Q(occasion__name__icontains=query) |
                 Q(target_category__icontains=query) |
-                Q(amazon_product_name__icontains=query)
+                Q(amazon_product_name__icontains=query) |
+                Q(user__username__icontains=query) |
+                Q(user__first_name__icontains=query) |
+                Q(user__last_name__icontains=query)
             )
 
         posts = posts.order_by('-created_at')
