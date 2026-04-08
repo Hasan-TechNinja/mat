@@ -83,10 +83,11 @@ class PostSerializer(serializers.ModelSerializer):
 
 class CommentSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
+    profile_image = serializers.ImageField(source='user.profile.image', read_only=True)
 
     class Meta:
         model = Comment
-        fields = ['id', 'post', 'user', 'content', 'created_at']
+        fields = ['id', 'post', 'user', 'profile_image', 'content', 'created_at']
 
 
 class WishlistSerializer(serializers.ModelSerializer):
