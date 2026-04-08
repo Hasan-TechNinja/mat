@@ -156,13 +156,25 @@ class StripeWebhookView(APIView):
             if user_id and plan_slug:
                 try:
                     user = User.objects.get(id=user_id)
+                    
+                    end_date = None
+                    if stripe_subscription_id:
+                        try:
+                            stripe_sub = stripe.Subscription.retrieve(stripe_subscription_id)
+                            # Convert Unix timestamp to datetime UTC
+                            import datetime
+                            end_date = datetime.datetime.fromtimestamp(stripe_sub.current_period_end, tz=datetime.timezone.utc)
+                        except Exception as e:
+                            print(f"Error retrieving Stripe subscription {stripe_subscription_id}: {e}")
+
                     SubscriptionService.purchase_subscription(
                         user=user,
                         plan_slug=plan_slug,
                         payment_method='stripe',
                         transaction_id=session.get('id'),
                         stripe_customer_id=stripe_customer_id,
-                        stripe_subscription_id=stripe_subscription_id
+                        stripe_subscription_id=stripe_subscription_id,
+                        end_date=end_date
                     )
                 except Exception as e:
                     print(f"Error processing subscription for session {session.get('id')}: {e}")
