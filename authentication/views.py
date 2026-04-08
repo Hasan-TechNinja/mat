@@ -420,8 +420,10 @@ class SocialAuthView(APIView):
                     gender='Other',
                 )
             else:
-                user.first_name = first_name if first_name else user.first_name
-                user.last_name = last_name if last_name else user.last_name
+                if not user.first_name:
+                    user.first_name = first_name
+                if not user.last_name:
+                    user.last_name = last_name
                 user.is_active = True
                 user.save()
 
