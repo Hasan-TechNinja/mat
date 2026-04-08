@@ -400,7 +400,7 @@ class SocialAuthView(APIView):
             user = User.objects.filter(email=email).first()
 
             if not user:
-                base_username = email.split('@')[0]
+                base_username = email
                 username = base_username
                 while User.objects.filter(username=username).exists():
                     username = f"{base_username}_{random.randint(1000, 9999)}"
@@ -419,23 +419,23 @@ class SocialAuthView(APIView):
                     user=user,
                     gender='Other',
                 )
-            else:
-                if not user.first_name:
-                    user.first_name = first_name
-                if not user.last_name:
-                    user.last_name = last_name
-                user.is_active = True
-                user.save()
 
             refresh = RefreshToken.for_user(user)
             access_token = refresh.access_token
 
-            access_token['first_name'] = user.first_name
-            access_token['last_name'] = user.last_name
-            access_token['email'] = user.email
-            access_token['role'] = "admin" if user.is_superuser else "user"
+            # access_token['first_name'] = user.first_name
+            # access_token['last_name'] = user.last_name
+            # access_token['email'] = user.email
+            # access_token['role'] = "admin" if user.is_superuser else "user"
 
-            user = {
+            profile = Profile.objects.filter(user=user).first()
+            if profile:
+                profile_serializer = ProfileSerializer(profile, context={'request': request})
+                user_data = profile_serializer.data
+                user_data['user_id'] = user.id
+                user_data['role'] = "admin" if user.is_superuser else "user"
+            else:
+                user_data = {
                     'user_id': user.id,
                     'first_name': user.first_name,
                     'last_name': user.last_name,
@@ -447,7 +447,7 @@ class SocialAuthView(APIView):
                 'message': "Social Authentication Successful",
                 'refresh': str(refresh),
                 'access': str(access_token),
-                'user': user,
+                'user': user_data,
             }, status=status.HTTP_200_OK)
             
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
