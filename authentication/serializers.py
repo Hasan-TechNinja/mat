@@ -35,6 +35,16 @@ class RegisterSerializer(serializers.ModelSerializer):
         model = User
         fields = ['email', 'first_name', 'last_name', 'password', 'confirm_password', 'gender', 'date_of_birth']
 
+    def validate_first_name(self, value):
+        if not value.isalpha():
+            raise serializers.ValidationError("First name must contain only alphabetic characters.")
+        return value
+
+    def validate_last_name(self, value):
+        if not value.isalpha():
+            raise serializers.ValidationError("Last name must contain only alphabetic characters.")
+        return value
+
     def validate(self, attrs):
         if attrs['password'] != attrs['confirm_password']:
             raise serializers.ValidationError({"password": "Password fields didn't match."})
