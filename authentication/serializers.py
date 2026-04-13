@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Profile
+from .models import Profile, PrivacyPolicy
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -82,3 +82,8 @@ class SocialAuthSerializer(serializers.Serializer):
         except ValidationError:
             raise serializers.ValidationError("Enter a valid email address.")
         return value
+
+class PrivacyPolicySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PrivacyPolicy
+        fields = ['content', 'created_at']

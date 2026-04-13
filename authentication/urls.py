@@ -15,4 +15,5 @@ urlpatterns = [
     path('profile/', views.ProfileView.as_view(), name='profile'),
     path('change-password/', views.ChangePassword.as_view(), name='change-password'),
     path('follow/<int:user_id>/', views.FollowToggleView.as_view(), name='follow-toggle'),
+    path('privacy-policy/', views.PrivacyPolicyView.as_view(), name='privacy-policy'),
 ]

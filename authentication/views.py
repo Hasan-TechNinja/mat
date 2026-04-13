@@ -1,8 +1,8 @@
 from urllib import request
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.models import User
-from . models import Profile, RegistrationVerifyCode, PasswordResetCode
-from .serializers import RegisterSerializer, LoginSerializer, ProfileSerializer, UserSerializer, SocialAuthSerializer
+from . models import PrivacyPolicy, Profile, RegistrationVerifyCode, PasswordResetCode
+from .serializers import PrivacyPolicySerializer, RegisterSerializer, LoginSerializer, ProfileSerializer, UserSerializer, SocialAuthSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -456,3 +456,14 @@ class SocialAuthView(APIView):
             }, status=status.HTTP_200_OK)
             
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+class PrivacyPolicyView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        policy = PrivacyPolicy.objects.order_by('-created_at').first()
+        if not policy:
+            return Response({"error": "Privacy policy not found."}, status=status.HTTP_404_NOT_FOUND)
+        serializer = PrivacyPolicySerializer(policy)
+        return Response(serializer.data, status=status.HTTP_200_OK)
