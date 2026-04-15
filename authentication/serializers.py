@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Profile, PrivacyPolicy
+from .models import Profile, PrivacyPolicy, TermsAndConditions
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -86,4 +86,10 @@ class SocialAuthSerializer(serializers.Serializer):
 class PrivacyPolicySerializer(serializers.ModelSerializer):
     class Meta:
         model = PrivacyPolicy
+        fields = ['content', 'created_at']
+
+
+class TermsAndConditionsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TermsAndConditions
         fields = ['content', 'created_at']

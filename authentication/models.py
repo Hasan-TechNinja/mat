@@ -53,3 +53,11 @@ class PrivacyPolicy(models.Model):
 
     def __str__(self):
         return f"Privacy Policy created at {self.created_at}"
+
+
+class TermsAndConditions(models.Model):
+    content = RichTextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Terms and Conditions created at {self.created_at}"
