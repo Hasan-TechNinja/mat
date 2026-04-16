@@ -48,21 +48,49 @@ class PostListCreateView(APIView):
     def post(self, request):
         serializer = PostSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
+            # Get user's active plan limits
+            max_total_posts = 10
+            max_own_affiliate_posts = 0
+            user_subs = request.user.subscriptions.select_related('plan').filter(status='active')
+            for sub in user_subs:
+                if sub.is_active_subscription:
+                    max_total_posts = sub.plan.max_total_posts
+                    max_own_affiliate_posts = sub.plan.max_own_affiliate_posts
+                    break
+            
+            if max_total_posts is not None:
+                current_posts = Post.objects.filter(user=request.user).count()
+                if current_posts >= max_total_posts:
+                    return Response({'error': f'You have reached the limit of {max_total_posts} posts. Please upgrade your subscription to add more posts.'}, status=status.HTTP_403_FORBIDDEN)
+
             save_kwargs = {'user': request.user}
             amazon_link = serializer.validated_data.get('amazon_link')
             
             if amazon_link:
-                is_subscribed = False
-                user_subs = request.user.subscriptions.select_related('plan').filter(status='active')
-                for sub in user_subs:
-                    if sub.is_active_subscription and sub.plan.slug.lower() == 'pro':
-                        is_subscribed = True
-                        break
-                
-                if not is_subscribed:
-                    import urllib.parse
-                    parsed = urllib.parse.urlparse(amazon_link)
-                    query_params = urllib.parse.parse_qs(parsed.query)
+                import urllib.parse
+                parsed = urllib.parse.urlparse(amazon_link)
+                query_params = urllib.parse.parse_qs(parsed.query)
+                user_tag = query_params.get('tag', [None])[0]
+
+                replace_tag = True
+
+                if user_tag and user_tag != 'giftmedia-21':
+                    # User is trying to use their own tag
+                    if max_own_affiliate_posts is None:
+                        # Premium: Unlimited use of own affiliate ID
+                        replace_tag = False
+                    elif max_own_affiliate_posts > 0:
+                        # Standard: Limited use of own affiliate ID
+                        own_tag_count = Post.objects.filter(
+                            user=request.user, 
+                            amazon_link__icontains='tag='
+                        ).exclude(
+                            amazon_link__iregex=r'tag=giftmedia-21(&|$)'
+                        ).count()
+                        if own_tag_count < max_own_affiliate_posts:
+                            replace_tag = False
+
+                if replace_tag:
                     query_params['tag'] = ['giftmedia-21']
                     new_query = urllib.parse.urlencode(query_params, doseq=True)
                     save_kwargs['amazon_link'] = parsed._replace(query=new_query).geturl()
@@ -631,21 +659,41 @@ class PostDetailsView(APIView):
                 amazon_link = serializer.validated_data.get('amazon_link')
                 
                 if amazon_link and amazon_link != post.amazon_link:
-                    is_subscribed = False
+                    # Get user's active plan limits
+                    max_own_affiliate_posts = 0
                     if request.user.is_authenticated:
                         user_subs = request.user.subscriptions.select_related('plan').filter(status='active')
                         for sub in user_subs:
-                            if hasattr(sub, 'is_active_subscription') and getattr(sub, 'is_active_subscription') and sub.plan.slug.lower() == 'pro':
-                                is_subscribed = True
+                            # Safely check is_active_subscription
+                            if hasattr(sub, 'is_active_subscription') and getattr(sub, 'is_active_subscription'):
+                                max_own_affiliate_posts = sub.plan.max_own_affiliate_posts
                                 break
-                            elif hasattr(sub, 'is_active_subscription') is False and sub.plan.slug.lower() == 'pro':
-                                is_subscribed = True
+                            elif hasattr(sub, 'is_active_subscription') is False:
+                                # Fallback if method doesn't exist
+                                max_own_affiliate_posts = sub.plan.max_own_affiliate_posts
                                 break
+
+                    import urllib.parse
+                    parsed = urllib.parse.urlparse(amazon_link)
+                    query_params = urllib.parse.parse_qs(parsed.query)
+                    user_tag = query_params.get('tag', [None])[0]
                     
-                    if not is_subscribed:
-                        import urllib.parse
-                        parsed = urllib.parse.urlparse(amazon_link)
-                        query_params = urllib.parse.parse_qs(parsed.query)
+                    replace_tag = True
+
+                    if user_tag and user_tag != 'giftmedia-21':
+                        # User is trying to use their own tag
+                        if max_own_affiliate_posts is None:
+                            replace_tag = False
+                        elif max_own_affiliate_posts > 0:
+                            # Use exclude(id=post.id) so the current post being edited doesn't count against them
+                            own_tag_count = Post.objects.filter(
+                                user=request.user, 
+                                amazon_link__icontains='tag='
+                            ).exclude(id=post.id).exclude(amazon_link__iregex=r'tag=giftmedia-21(&|$)').count()
+                            if own_tag_count < max_own_affiliate_posts:
+                                replace_tag = False
+                            
+                    if replace_tag:
                         query_params['tag'] = ['giftmedia-21']
                         new_query = urllib.parse.urlencode(query_params, doseq=True)
                         save_kwargs['amazon_link'] = parsed._replace(query=new_query).geturl()

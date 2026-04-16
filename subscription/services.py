@@ -28,11 +28,14 @@ class SubscriptionService:
                 price=0.00,
                 duration_days=0,  # 0 = no expiry
                 features=[
+                    'Limit of 10 total posts',
                     'Affiliate links generated using our affiliate ID',
-                    'Add unlimited Amazon product links',
+                    'Add Amazon product links (up to 10)',
                     'No account configuration required',
                     'Basic support',
                 ],
+                max_total_posts=10,
+                max_own_affiliate_posts=0,
                 is_active=True,
             )
 

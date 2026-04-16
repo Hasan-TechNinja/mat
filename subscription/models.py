@@ -11,6 +11,8 @@ class SubscriptionPlan(models.Model):
     google_play_product_id = models.CharField(max_length=255, null=True, blank=True, help_text="Google Play Product ID for this plan")
     apple_product_id = models.CharField(max_length=255, null=True, blank=True, help_text="Apple App Store Product ID for this plan")
     duration_days = models.IntegerField(default=30)  # 30 = monthly
+    max_total_posts = models.IntegerField(null=True, blank=True, help_text="Null for unlimited")
+    max_own_affiliate_posts = models.IntegerField(null=True, blank=True, help_text="Null for unlimited")
     features = models.JSONField(default=list, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
