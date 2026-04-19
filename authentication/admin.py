@@ -20,7 +20,7 @@ class TermsAndConditionsAdmin(admin.ModelAdmin):
 admin.site.register(TermsAndConditions, TermsAndConditionsAdmin)
 
 
-admin.site.site_header = "Gift Guru Admin Portal"
-admin.site.site_title = "Gift Guru Admin Portal"
+admin.site.site_header = "🎁 Gift Guru Admin Portal"
+admin.site.site_title = "🎁 Gift Guru Admin Portal"
 admin.site.index_title = "Welcome to Gift Guru Admin Portal" 
 admin.site.enable_nav_sidebar = True
