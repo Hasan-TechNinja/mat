@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from . models import Post, PostImage, Comment, Wishlist, Category, Occasion
+from . models import Post, PostImage, Comment, Wishlist, Category, Occasion, ReportPost
 from authentication.models import Profile
 from authentication.serializers import UserSerializer, ProfileSerializer
 
@@ -109,3 +109,10 @@ class OccasionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Occasion
         fields = ['id', 'name']
+
+
+class ReportPostSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ReportPost
+        fields = ['id', 'post', 'reason', 'created_at']
+        read_only_fields = ['id', 'created_at']

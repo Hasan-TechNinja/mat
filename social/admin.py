@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, Occasion, Post, PostImage, Comment, Wishlist
+from .models import Category, Occasion, Post, PostImage, Comment, Wishlist, ReportPost
 # Register your models here.
 
 class PostImageInline(admin.TabularInline):
@@ -53,3 +53,10 @@ class CategoryAdmin(admin.ModelAdmin):
     search_fields = ('name',)
     list_filter = ('name',)
 admin.site.register(Category, CategoryAdmin)
+
+
+class ReportPostAdmin(admin.ModelAdmin):
+    list_display = ('id', 'post', 'user', 'reason', 'created_at')
+    search_fields = ('post', 'user', 'reason')
+    list_filter = ('reason',)
+admin.site.register(ReportPost, ReportPostAdmin)

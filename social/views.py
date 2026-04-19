@@ -4,9 +4,9 @@ from django.db.models import Q, Count, Sum
 from django.db.models.functions import ExtractMonth
 from django.utils import timezone
 from datetime import timedelta
-from .models import Post, PostImage, Comment, Wishlist, Category, Occasion, LinkClick
+from .models import Post, PostImage, Comment, Wishlist, Category, Occasion, LinkClick, ReportPost
 from django.contrib.auth.models import User
-from .serializers import PostSerializer, CommentSerializer, WishlistSerializer, CategorySerializer, OccasionSerializer
+from .serializers import PostSerializer, CommentSerializer, WishlistSerializer, CategorySerializer, OccasionSerializer, ReportPostSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
@@ -21,8 +21,16 @@ class PostListCreateView(APIView):
     parser_classes = [MultiPartParser, FormParser]
 
     def get(self, request):
-        # Include approved posts from others AND all of the current user's own posts
         posts = Post.objects.filter(Q(approval=True) | Q(user=request.user)).distinct()
+        
+        if request.user.is_authenticated:
+            blocked_users = request.user.profile.blocked_users.values_list('user', flat=True)
+            blocked_by = request.user.profile.blocked_by.values_list('user', flat=True)
+            posts = posts.exclude(user__in=list(blocked_users) + list(blocked_by))
+
+            # Filter reported posts
+            reported_posts = ReportPost.objects.filter(user=request.user).values_list('post_id', flat=True)
+            posts = posts.exclude(id__in=reported_posts)
 
         user = request.user
         if hasattr(user, 'profile') and user.profile.date_of_birth:
@@ -297,6 +305,15 @@ class PostSearchView(APIView):
 
         posts = Post.objects.filter(approval=True)
 
+        if request.user.is_authenticated:
+            blocked_users = request.user.profile.blocked_users.values_list('user', flat=True)
+            blocked_by = request.user.profile.blocked_by.values_list('user', flat=True)
+            posts = posts.exclude(user__in=list(blocked_users) + list(blocked_by))
+
+            # Filter reported posts
+            reported_posts = ReportPost.objects.filter(user=request.user).values_list('post_id', flat=True)
+            posts = posts.exclude(id__in=reported_posts)
+
         if category:
             if category.isdigit():
                 posts = posts.filter(category_id=category)
@@ -363,6 +380,15 @@ class TrendingPostView(APIView):
             created_at__gte=one_month_ago
         )
 
+        if request.user.is_authenticated:
+            blocked_users = request.user.profile.blocked_users.values_list('user', flat=True)
+            blocked_by = request.user.profile.blocked_by.values_list('user', flat=True)
+            posts = posts.exclude(user__in=list(blocked_users) + list(blocked_by))
+
+            # Filter reported posts
+            reported_posts = ReportPost.objects.filter(user=request.user).values_list('post_id', flat=True)
+            posts = posts.exclude(id__in=reported_posts)
+
         category = request.query_params.get('category')
         occasion = request.query_params.get('occasion')
         target = request.query_params.get('target')
@@ -427,6 +453,15 @@ class RecommendedPostView(APIView):
         ).exclude(
             id__in=engaged_post_ids
         )
+
+        if request.user.is_authenticated:
+            blocked_users = request.user.profile.blocked_users.values_list('user', flat=True)
+            blocked_by = request.user.profile.blocked_by.values_list('user', flat=True)
+            posts = posts.exclude(user__in=list(blocked_users) + list(blocked_by))
+
+            # Filter reported posts
+            reported_posts = ReportPost.objects.filter(user=request.user).values_list('post_id', flat=True)
+            posts = posts.exclude(id__in=reported_posts)
 
         category = request.query_params.get('category')
         occasion = request.query_params.get('occasion')
@@ -514,6 +549,15 @@ class TopClickedPostView(APIView):
 
     def get(self, request):
         posts = Post.objects.filter(approval=True).order_by('-link_clicks', '-created_at')
+
+        if request.user.is_authenticated:
+            blocked_users = request.user.profile.blocked_users.values_list('user', flat=True)
+            blocked_by = request.user.profile.blocked_by.values_list('user', flat=True)
+            posts = posts.exclude(user__in=list(blocked_users) + list(blocked_by))
+
+            # Filter reported posts
+            reported_posts = ReportPost.objects.filter(user=request.user).values_list('post_id', flat=True)
+            posts = posts.exclude(id__in=reported_posts)
         
         category = request.query_params.get('category')
         occasion = request.query_params.get('occasion')
@@ -719,3 +763,16 @@ class PostDetailsView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Post.DoesNotExist:
             return Response({'error': 'Post not found'}, status=status.HTTP_404_NOT_FOUND)
+class ReportPostView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = ReportPostSerializer(data=request.data)
+        if serializer.is_valid():
+            post_id = serializer.validated_data.get('post').id
+            if ReportPost.objects.filter(user=request.user, post_id=post_id).exists():
+                return Response({"message": "You have already reported this post."}, status=status.HTTP_400_BAD_REQUEST)
+            
+            serializer.save(user=request.user)
+            return Response({"message": "Post reported successfully."}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
