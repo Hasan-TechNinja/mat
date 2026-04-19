@@ -392,6 +392,34 @@ class FollowToggleView(APIView):
             return Response({"message": "Followed successfully"}, status=status.HTTP_201_CREATED)
 
 
+class BlockToggleView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, user_id):
+        try:
+            target_user = User.objects.get(id=user_id)
+            target_profile = target_user.profile
+        except (User.DoesNotExist, Profile.DoesNotExist):
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        my_profile = get_object_or_404(Profile, user=request.user)
+
+        if target_user == request.user:
+            return Response({"error": "You cannot block yourself"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if my_profile.blocked_users.filter(id=target_profile.id).exists():
+            my_profile.blocked_users.remove(target_profile)
+            return Response({"message": "User unblocked successfully"}, status=status.HTTP_200_OK)
+        else:
+            my_profile.blocked_users.add(target_profile)
+            
+            # Mutual unfollow when blocking
+            my_profile.following.remove(target_profile)
+            target_profile.following.remove(my_profile)
+            
+            return Response({"message": "User blocked successfully"}, status=status.HTTP_201_CREATED)
+
+
 class SocialAuthView(APIView):
     permission_classes = [permissions.AllowAny]
 
