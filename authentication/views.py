@@ -419,6 +419,15 @@ class BlockToggleView(APIView):
             
             return Response({"message": "User blocked successfully"}, status=status.HTTP_201_CREATED)
 
+class BlockedUserListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        my_profile = get_object_or_404(Profile, user=request.user)
+        blocked_users = my_profile.blocked_users.all()
+        serializer = ProfileSerializer(blocked_users, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 class SocialAuthView(APIView):
     permission_classes = [permissions.AllowAny]

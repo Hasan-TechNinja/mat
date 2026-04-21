@@ -18,4 +18,5 @@ urlpatterns = [
     path('block/<int:user_id>/', views.BlockToggleView.as_view(), name='block-toggle'),
     path('privacy-policy/', views.PrivacyPolicyView.as_view(), name='privacy-policy'),
     path('terms-service/', views.TermsAndConditionsView.as_view(), name='terms-service'),
+    path('blocked-users/', views.BlockedUserListView.as_view(), name='blocked-users'),
 ]
