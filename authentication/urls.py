@@ -19,4 +19,7 @@ urlpatterns = [
     path('privacy-policy/', views.PrivacyPolicyView.as_view(), name='privacy-policy'),
     path('terms-service/', views.TermsAndConditionsView.as_view(), name='terms-service'),
     path('blocked-users/', views.BlockedUserListView.as_view(), name='blocked-users'),
+    path('delete-account/', views.DeleteAccountView.as_view(), name='delete-account'),
+    path('cancel-deletion/', views.CancelDeletionView.as_view(), name='cancel-deletion'),
+    path('deletion-status/', views.DeletionStatusView.as_view(), name='deletion-status'),
 ]

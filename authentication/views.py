@@ -1,7 +1,7 @@
 from urllib import request
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.models import User
-from . models import PrivacyPolicy, Profile, RegistrationVerifyCode, PasswordResetCode, TermsAndConditions
+from . models import PrivacyPolicy, Profile, RegistrationVerifyCode, PasswordResetCode, TermsAndConditions, AccountDeletionRequest
 from .serializers import PrivacyPolicySerializer, RegisterSerializer, LoginSerializer, ProfileSerializer, UserSerializer, SocialAuthSerializer, TermsAndConditionsSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -12,6 +12,7 @@ import random
 import string
 from django.core.mail import send_mail
 from rest_framework_simplejwt.tokens import RefreshToken
+from datetime import timedelta
 
 # Create your views here.
 
@@ -156,7 +157,7 @@ class LoginView(APIView):
                 access_token['email'] = user.email
                 access_token['role'] = "admin" if user.is_superuser else "user"
 
-                user = {
+                user_data = {
                     'user_id': user.id,
                     'first_name': user.first_name,
                     'last_name': user.last_name,
@@ -164,11 +165,19 @@ class LoginView(APIView):
                     'role': "admin" if user.is_superuser else "user",
                 }
                 
+                # Cancel any pending account deletion request if user logs in
+                deletion_request = AccountDeletionRequest.objects.filter(user=user, status='pending').first()
+                if deletion_request:
+                    deletion_request.status = 'cancelled'
+                    deletion_request.cancelled_at = timezone.now()
+                    deletion_request.save()
+                    
                 return Response({
                     'message': "Login Successful",
                     'refresh': str(refresh),
                     'access': str(access_token),
-                    'user': user,
+                    'user': user_data,
+                    'deletion_request_cancelled': deletion_request is not None
                 }, status=status.HTTP_200_OK)
             return Response({'error': "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -331,10 +340,6 @@ class ProfileView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def delete(self, request):
-        user = request.user
-        user.delete()
-        return Response({"message": "Account deleted successfully."}, status=status.HTTP_200_OK)
 
 
 class ChangePassword(APIView):
@@ -485,11 +490,19 @@ class SocialAuthView(APIView):
                     'role': "admin" if user.is_superuser else "user",
                 }
 
+            # Cancel any pending account deletion request if user logs in via social auth
+            deletion_request = AccountDeletionRequest.objects.filter(user=user, status='pending').first()
+            if deletion_request:
+                deletion_request.status = 'cancelled'
+                deletion_request.cancelled_at = timezone.now()
+                deletion_request.save()
+
             return Response({
                 'message': "Social Authentication Successful",
                 'refresh': str(refresh),
                 'access': str(access_token),
                 'user': user_data,
+                'deletion_request_cancelled': deletion_request is not None
             }, status=status.HTTP_200_OK)
             
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -515,3 +528,106 @@ class TermsAndConditionsView(APIView):
             return Response({"error": "Terms and conditions not found."}, status=status.HTTP_404_NOT_FOUND)
         serializer = TermsAndConditionsSerializer(terms)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class DeleteAccountView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        email = request.data.get('email', '')
+        password = request.data.get('password', '')
+        reason = request.data.get('reason', '')
+
+        # Validate that email and password are provided
+        if not email or not password:
+            return Response(
+                {"error": "Email and password are required to delete your account."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Verify the email matches the authenticated user
+        if email.lower().strip() != user.email.lower().strip():
+            return Response(
+                {"error": "The email address does not match your account."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Verify the password is correct
+        if not user.check_password(password):
+            return Response(
+                {"error": "Incorrect password."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # Check subscription
+        active_subscription = user.subscriptions.filter(status='active').first()
+        if active_subscription and active_subscription.plan.slug != 'free' and user.profile.is_subscribed:
+            return Response(
+                {"error": "You cannot delete your account because you have an active subscription. Please cancel your subscription from the billing provider first."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Check if there's already a pending deletion request
+        existing = AccountDeletionRequest.objects.filter(user=user, status='pending').first()
+        if existing:
+            return Response({
+                "message": "You already have a pending deletion request.",
+                "scheduled_deletion_date": existing.scheduled_deletion_date,
+                "days_remaining": existing.days_remaining,
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Remove any existing (cancelled/completed) deletion request to start fresh
+        AccountDeletionRequest.objects.filter(user=user).delete()
+
+        # Create a new deletion request (30 days from now)
+        deletion_request = AccountDeletionRequest.objects.create(
+            user=user,
+            reason=reason,
+            scheduled_deletion_date=timezone.now() + timedelta(days=31),
+        )
+
+        return Response({
+            "message": "Account deletion request submitted. Your account will be permanently deleted after 30 days. If you log in before then, the request will be cancelled.",
+            "scheduled_deletion_date": deletion_request.scheduled_deletion_date,
+            "days_remaining": deletion_request.days_remaining,
+        }, status=status.HTTP_200_OK)
+
+    def delete(self, request):
+        """Also support DELETE method for backward compatibility."""
+        return self.post(request)
+
+
+class CancelDeletionView(APIView):
+    """Explicitly cancel a pending account deletion request."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        try:
+            deletion_request = AccountDeletionRequest.objects.get(user=user, status='pending')
+            deletion_request.status = 'cancelled'
+            deletion_request.cancelled_at = timezone.now()
+            deletion_request.save()
+            return Response({"message": "Account deletion request has been cancelled."}, status=status.HTTP_200_OK)
+        except AccountDeletionRequest.DoesNotExist:
+            return Response({"error": "No pending deletion request found."}, status=status.HTTP_404_NOT_FOUND)
+
+
+class DeletionStatusView(APIView):
+    """Check the status of account deletion request."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        deletion_request = AccountDeletionRequest.objects.filter(user=user).order_by('-requested_at').first()
+        if not deletion_request:
+            return Response({"has_pending_deletion": False}, status=status.HTTP_200_OK)
+
+        return Response({
+            "has_pending_deletion": deletion_request.status == 'pending',
+            "status": deletion_request.status,
+            "requested_at": deletion_request.requested_at,
+            "scheduled_deletion_date": deletion_request.scheduled_deletion_date,
+            "days_remaining": deletion_request.days_remaining,
+            "cancelled_at": deletion_request.cancelled_at,
+        }, status=status.HTTP_200_OK)

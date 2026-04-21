@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 from ckeditor.fields import RichTextField
+from datetime import timedelta
 
 # Create your models here.
 
@@ -62,3 +63,37 @@ class TermsAndConditions(models.Model):
 
     def __str__(self):
         return f"Terms and Conditions created at {self.created_at}"
+
+
+class AccountDeletionRequest(models.Model):
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('cancelled', 'Cancelled'),
+        ('completed', 'Completed'),
+    )
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='deletion_request')
+    reason = models.TextField(blank=True, null=True)
+    requested_at = models.DateTimeField(auto_now_add=True)
+    scheduled_deletion_date = models.DateTimeField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if not self.scheduled_deletion_date:
+            self.scheduled_deletion_date = timezone.now() + timedelta(days=30)
+        super().save(*args, **kwargs)
+
+    @property
+    def is_expired(self):
+        return timezone.now() >= self.scheduled_deletion_date
+
+    @property
+    def days_remaining(self):
+        if self.status != 'pending':
+            return 0
+        remaining = (self.scheduled_deletion_date - timezone.now()).days
+        return max(remaining, 0)
+
+    def __str__(self):
+        return f"Deletion request for {self.user.email} - {self.status}"
