@@ -631,3 +631,28 @@ class DeletionStatusView(APIView):
             "days_remaining": deletion_request.days_remaining,
             "cancelled_at": deletion_request.cancelled_at,
         }, status=status.HTTP_200_OK)
+
+    
+
+class SetFirstPasswordView(APIView):
+    permissions = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        password = request.data.get('password')
+        confirm_password = request.data.get('confirm_password')
+
+        if not password or not confirm_password:
+            return Response({"error": "Password and confirm password are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if password != confirm_password:
+            return Response({"error": "Passwords do not match."},
+            status=status.HTTP_400_BAD_REQUEST)
+
+        # if not validate_password(password):
+        #     return Response({"error": "Password is not strong enough."},
+        #     status=status.HTTP_400_BAD_REQUEST)
+
+        request.user.set_password(password)
+        request.user.save()
+
+        return Response({"message": "Password set successfully."}, status=status.HTTP_200_OK)

@@ -22,4 +22,5 @@ urlpatterns = [
     path('delete-account/', views.DeleteAccountView.as_view(), name='delete-account'),
     path('cancel-deletion/', views.CancelDeletionView.as_view(), name='cancel-deletion'),
     path('deletion-status/', views.DeletionStatusView.as_view(), name='deletion-status'),
+    path('set-password/', views.SetFirstPasswordView.as_view(), name='set-password'),
 ]
