@@ -2,7 +2,7 @@ from urllib import request
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.models import User
 from . models import PrivacyPolicy, Profile, RegistrationVerifyCode, PasswordResetCode, TermsAndConditions, AccountDeletionRequest
-from .serializers import PrivacyPolicySerializer, RegisterSerializer, LoginSerializer, ProfileSerializer, UserSerializer, SocialAuthSerializer, TermsAndConditionsSerializer
+from .serializers import PrivacyPolicySerializer, RegisterSerializer, LoginSerializer, ProfileSerializer, UserSerializer, SocialAuthSerializer, TermsAndConditionsSerializer, FollowerSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -656,3 +656,21 @@ class SetFirstPasswordView(APIView):
         request.user.save()
 
         return Response({"message": "Password set successfully."}, status=status.HTTP_200_OK)
+
+
+class FollowersListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        followers = request.user.profile.followers.all()
+        serializer = FollowerSerializer(followers, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class FollowingListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        following = request.user.profile.following.all()
+        serializer = FollowerSerializer(following, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

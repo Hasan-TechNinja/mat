@@ -23,4 +23,6 @@ urlpatterns = [
     path('cancel-deletion/', views.CancelDeletionView.as_view(), name='cancel-deletion'),
     path('deletion-status/', views.DeletionStatusView.as_view(), name='deletion-status'),
     path('set-password/', views.SetFirstPasswordView.as_view(), name='set-password'),
+    path('followers/', views.FollowersListView.as_view(), name='followers'),
+    path('following/', views.FollowingListView.as_view(), name='following'),
 ]

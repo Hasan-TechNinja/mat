@@ -25,6 +25,15 @@ class ProfileSerializer(serializers.ModelSerializer):
     def get_following_count(self, obj):
         return obj.following.count()
 
+class FollowerSerializer(serializers.ModelSerializer):
+    first_name = serializers.CharField(source='user.first_name', read_only=True)
+    last_name = serializers.CharField(source='user.last_name', read_only=True)
+    username = serializers.CharField(source='user.username', read_only=True)
+
+    class Meta:
+        model = Profile
+        fields = ['id', 'user', 'username', 'first_name', 'last_name', 'image']
+
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
     confirm_password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
