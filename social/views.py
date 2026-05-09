@@ -300,8 +300,6 @@ class PostSearchView(APIView):
         occasion = request.query_params.get('occasion', '').strip()
         target = request.query_params.get('target', '').strip()
 
-        if not any([gender, age, query, category, occasion, target]):
-            return Response([], status=status.HTTP_200_OK)
 
         posts = Post.objects.filter(approval=True)
 
