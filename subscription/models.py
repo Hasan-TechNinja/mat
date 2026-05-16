@@ -10,7 +10,7 @@ class SubscriptionPlan(models.Model):
     stripe_price_id = models.CharField(max_length=255, null=True, blank=True, help_text="Stripe Price ID (e.g., price_1N...) for this plan")
     google_play_product_id = models.CharField(max_length=255, null=True, blank=True, help_text="Google Play Product ID for this plan")
     apple_product_id = models.CharField(max_length=255, null=True, blank=True, help_text="Apple App Store Product ID for this plan")
-    duration_days = models.IntegerField(default=30)  # 30 = monthly
+
     max_total_posts = models.IntegerField(null=True, blank=True, help_text="Null for unlimited")
     max_own_affiliate_posts = models.IntegerField(null=True, blank=True, help_text="Null for unlimited")
     features = models.JSONField(default=list, blank=True)
@@ -20,6 +20,17 @@ class SubscriptionPlan(models.Model):
 
     class Meta:
         ordering = ['price']
+
+    @property
+    def current_duration_days(self):
+        """Returns the number of days in the current calendar month for paid plans."""
+        if self.slug == 'free':
+            return None
+        import calendar
+        from django.utils import timezone
+        now = timezone.now()
+        _, days = calendar.monthrange(now.year, now.month)
+        return days
 
     def __str__(self):
         return f"{self.name} (${self.price}/month)"

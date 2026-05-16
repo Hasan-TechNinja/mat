@@ -26,7 +26,7 @@ class SubscriptionService:
                 name='Free',
                 slug='free',
                 price=0.00,
-                duration_days=0,  # 0 = no expiry
+
                 features=[
                     'Limit of 10 total posts',
                     'Affiliate links generated using our affiliate ID',
@@ -73,7 +73,36 @@ class SubscriptionService:
         # Create the new subscription
         start = timezone.now()
         if end_date is None:
-            end = start + timedelta(days=plan.duration_days) if plan.duration_days > 0 else None
+            if plan.slug == 'free':
+                end = None
+            elif plan.stripe_price_id:
+                try:
+                    price = stripe.Price.retrieve(plan.stripe_price_id)
+                    if price.recurring:
+                        interval = price.recurring.interval
+                        interval_count = price.recurring.interval_count
+                        
+                        if interval == 'month':
+                            from dateutil.relativedelta import relativedelta
+                            end = start + relativedelta(months=interval_count)
+                        elif interval == 'year':
+                            from dateutil.relativedelta import relativedelta
+                            end = start + relativedelta(years=interval_count)
+                        elif interval == 'week':
+                            end = start + timedelta(weeks=interval_count)
+                        elif interval == 'day':
+                            end = start + timedelta(days=interval_count)
+                        else:
+                            end = start + timedelta(days=30)  # Fallback to 30 days
+                    else:
+                        end = start + timedelta(days=30)  # Default for one-time payment if somehow treated as monthly
+                except Exception as e:
+                    print(f"Error fetching Stripe price: {e}")
+                    end = start + timedelta(days=30)  # Fallback
+            else:
+                # Default to monthly if no stripe_price_id and not free
+                from dateutil.relativedelta import relativedelta
+                end = start + relativedelta(months=1)
         else:
             end = end_date
 

@@ -103,7 +103,7 @@ class CreateStripeCheckoutSessionView(APIView):
                         'price': plan.stripe_price_id,
                         'quantity': 1,
                     }],
-                    mode='subscription' if plan.duration_days > 0 else 'payment',
+                    mode='subscription',
                     customer_email=request.user.email,
                     client_reference_id=str(request.user.id),
                     metadata={
