@@ -2,7 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
 from .models import SubscriptionPlan
-from .serializers import SubscriptionPlanSerializer, UserSubscriptionSerializer, PurchaseSerializer
+from .serializers import SubscriptionPlanSerializer, UserSubscriptionSerializer, PurchaseSerializer, AppPurchaseSerializer
 from .services import SubscriptionService
 import stripe
 from django.conf import settings
@@ -40,6 +40,28 @@ class PurchaseSubscriptionView(APIView):
                 )
                 return Response({
                     'message': 'Subscription purchased successfully!',
+                    'subscription': UserSubscriptionSerializer(subscription).data,
+                }, status=status.HTTP_201_CREATED)
+            except ValueError as e:
+                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AppPurchaseSubscriptionView(APIView):
+    """Purchase a subscription via Apple IAP or Google Play with unified endpoint."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = AppPurchaseSerializer(data=request.data)
+        if serializer.is_valid():
+            try:
+                subscription = SubscriptionService.purchase_subscription(
+                    user=request.user,
+                    plan_slug=serializer.validated_data['plan_slug'],
+                    payment_method='other',  # Unified endpoint, specifics can be handled if needed
+                )
+                return Response({
+                    'message': 'App subscription purchased successfully!',
                     'subscription': UserSubscriptionSerializer(subscription).data,
                 }, status=status.HTTP_201_CREATED)
             except ValueError as e:

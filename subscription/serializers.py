@@ -29,3 +29,7 @@ class PurchaseSerializer(serializers.Serializer):
         default='other',
     )
     transaction_id = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
+
+class AppPurchaseSerializer(serializers.Serializer):
+    plan_slug = serializers.SlugField(required=True)
